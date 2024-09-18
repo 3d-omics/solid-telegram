@@ -1,0 +1,748 @@
+# Community composition
+
+## Load data 
+Load the data produced in the previous chapter
+```{r load_data_composition, warning=FALSE, comments="", message=FALSE}
+load("data/data.Rdata")
+quality <- read_tsv("results/final_combined_stats.tsv",
+  col_types = cols_only(microsample = col_character(), quality = col_double()),
+  show_col_types = FALSE
+)
+```
+
+Prepare the dataset by joining the sample metadata, genome metadata, quality data to the counts data.
+```{r taxonomy_dataframe_function, warning=FALSE, comments="", message=FALSE}
+prepare_taxonomy_dataset <- function(genome_counts_df, genome_metadata, sample_metadata, quality) {
+  taxonomy_dataset <- genome_counts_df %>%
+    mutate_at(vars(-genome), ~ . / sum(.)) %>% # Apply TSS normalization (i.e., scale each sample to 1)
+    pivot_longer(-genome, names_to = "microsample", values_to = "count") %>% # Reduce to minimum number of columns
+    left_join(genome_metadata, by = join_by(genome == genome)) %>% # Append genome metadata
+    left_join(sample_metadata, by = join_by(microsample == microsample)) %>% # Append sample metadata
+    left_join(quality, by = join_by(microsample == microsample)) %>% # Append quality data
+    mutate(section = unlist(section)) %>% # Flatten section if it's a list
+    filter(!is.na(count)) %>% # Filter out rows with NA in count
+    filter(count > 0) # Filter out rows with count <= 0
+  return(taxonomy_dataset)
+}
+```
+
+
+
+## Community composition barplots
+Function to generate plots based on taxonomy data and plot parameters. 
+You can also input whether you want to filter based on the quality of the microsample or its type. 
+E.g. filter_quality = 5, filter_type = c("Positive") or filter_type = c("NegativeMembrane", "NegativeCollection", "NegativeReaction").
+
+### Phylum level plot
+```{r phylum_taxonomy_barplot_function, warning=FALSE, comments="", message=FALSE}
+plot_taxonomy_data <- function(taxonomy_data, plot_params, filter_quality = NULL, filter_type = NULL) {
+  
+  # Apply filters based on plot_params
+  filtered_data <- taxonomy_data
+
+  # Dynamically apply filter conditions
+  if (length(plot_params$filter_conditions) > 0) {
+    filtered_data <- filtered_data %>% filter(!!!plot_params$filter_conditions)
+  }
+
+  # Dynamically apply the quality filter if provided
+  if (!is.null(filter_quality)) {
+    filtered_data <- filtered_data %>% filter(quality == filter_quality)
+  }
+  
+  # Dynamically apply the type filter (positive/negative) if provided
+  if (!is.null(filter_type)) {
+    filtered_data <- filtered_data %>% filter(type %in% filter_type)
+  }
+  
+    # Conditionally apply factor() for size based on the presence of 'size' in plot_params$fill_var
+  if (grepl("size", plot_params$fill_var)) {
+    filtered_data <- filtered_data %>%
+      mutate(size = factor(size, levels = c(500, 1500, 2500, 5000, 25000, 50000)))
+  }
+  
+  # Calculate total abundance for each phylum
+  phylum_order <- filtered_data %>%
+    group_by(phylum) %>%
+    summarise(total_abundance = sum(count, na.rm = TRUE), .groups = "drop") %>%
+    arrange(desc(total_abundance)) %>%
+    pull(phylum) # Extract the ordered phylum names
+
+  # Convert 'phylum' to a factor with levels ordered by abundance
+  filtered_data <- filtered_data %>%
+    mutate(phylum = factor(phylum, levels = phylum_order))
+
+  # Create an ordered factor for genus within each phylum by abundance
+  filtered_data <- filtered_data %>%
+    group_by(phylum, genus) %>%
+    summarise(genus_abundance = sum(count, na.rm = TRUE), .groups = "drop") %>%
+    arrange(phylum, desc(genus_abundance)) %>%
+    mutate(genus_order = factor(genus, levels = unique(genus))) %>%
+    select(phylum, genus, genus_order) %>%
+    right_join(filtered_data, by = c("phylum", "genus")) %>% # Rejoin to original filtered data
+    mutate(genus = genus_order) %>% # Apply ordered factor to genus
+    select(-genus_order)
+
+  # Calculate plot height dynamically based on number of microsamples included in this plot
+  # Group by microsample and count the occurrences
+  num_microsamples <- filtered_data %>%
+    count(microsample)
+  # print(nrow(num_microsamples))
+  plot_height <- 5 + (nrow(num_microsamples) * 0.2) #10 + (nrow(plot_data) * 0.01)
+
+  # Generate the plot
+  p <- ggplot(filtered_data, aes(x = count, y = microsample, fill = phylum, group = interaction(phylum, genus))) + # Group by multiple taxonomic levels
+    geom_bar(stat = "identity", colour = "white", linewidth = 0.1) + # Stacked bars with white borders
+    scale_fill_manual(values = phylum_colors[-4], drop = FALSE) + # Use manual color scale and ensure all phyla are represented
+    labs(
+      x = "Relative abundance",
+      y = "Microsamples",
+      fill = "Phylum",
+      title = plot_params$plot_title
+    ) +
+    facet_nested(as.formula(plot_params$facet_formula), scales = "free", space = "free") + # Dynamic faceting
+    guides(fill = guide_legend(ncol = 1)) +
+    custom_ggplot_theme 
+  return(list(plot = p, height = plot_height))
+}
+```
+
+### Genus level plot
+Function to generate shades for each genus within the same phylum
+```{r generate_shades_function, warning=FALSE, comments="", message=FALSE}
+generate_shades <- function(base_color, n) {
+  # Generate 'n' shades from the base color to a lighter version (not white)
+  colorRampPalette(colors = c(scales::muted(base_color, l = 30), base_color))(n)
+}
+```
+
+Function to generate plots based on taxonomy data and plot parameters. 
+```{r genus_taxonomy_barplot_function, warning=FALSE, comments="", message=FALSE}
+genus_plot_taxonomy_data <- function(taxonomy_data, plot_params, filter_quality = NULL, filter_type = NULL, top_n = 20) {
+  
+  # Apply filters based on plot_params
+  filtered_data <- taxonomy_data
+
+  # Dynamically apply filter conditions
+  if (length(plot_params$filter_conditions) > 0) {
+    filtered_data <- filtered_data %>% filter(!!!plot_params$filter_conditions)
+  }
+
+ # Dynamically apply the quality filter if provided
+  if (!is.null(filter_quality)) {
+    filtered_data <- filtered_data %>% filter(quality == filter_quality)
+  }
+  
+  # Dynamically apply the type filter (positive/negative) if provided
+  if (!is.null(filter_type)) {
+    filtered_data <- filtered_data %>% filter(type %in% filter_type)
+  }
+  
+    # Conditionally apply factor() for size based on the presence of 'size' in plot_params$fill_var
+  if (grepl("size", plot_params$fill_var)) {
+    filtered_data <- filtered_data %>%
+      mutate(size = factor(size, levels = c(500, 1500, 2500, 5000, 25000, 50000)))
+  }
+  
+  # Calculate total abundance for each phylum
+  phylum_order <- filtered_data %>%
+    group_by(phylum) %>%
+    summarise(total_abundance = sum(count, na.rm = TRUE), .groups = "drop") %>%
+    arrange(desc(total_abundance)) %>%
+    pull(phylum) # Extract the ordered phylum names
+
+  # Convert 'phylum' to a factor with levels ordered by abundance
+  filtered_data <- filtered_data %>%
+    mutate(phylum = factor(phylum, levels = phylum_order))
+
+  # Create an ordered factor for genus within each phylum by abundance
+  filtered_data <- filtered_data %>%
+    group_by(phylum, genus) %>%
+    summarise(genus_abundance = sum(count, na.rm = TRUE), .groups = "drop") %>%
+    arrange(phylum, desc(genus_abundance)) %>%
+    mutate(genus_order = factor(genus, levels = unique(genus))) %>%
+    select(phylum, genus, genus_order) %>%
+    right_join(filtered_data, by = c("phylum", "genus")) %>% # Rejoin to original filtered data
+    mutate(
+      genus_for_plot = genus_order, # Use the ordered factor for plotting
+      genus_label = as.character(genus)
+    ) %>% # Keep original genus names for labeling
+    select(-genus_order)
+  
+  
+  # Calculate plot height dynamically based on number of microsamples included in this plot
+  num_microsamples <- filtered_data %>%
+    count(microsample)
+  #print(nrow(num_microsamples))
+  plot_height <- 5 + (nrow(num_microsamples) * 0.2) 
+
+  # Calculate total abundance for each genus across all phyla
+  genus_abundance <- filtered_data %>%
+    group_by(genus) %>%
+    summarise(total_abundance = sum(count, na.rm = TRUE), .groups = "drop") %>%
+    arrange(desc(total_abundance))
+
+  # Get the top 'n' genera by overall abundance
+  top_genera <- genus_abundance %>%
+    slice_head(n = top_n) %>%
+    pull(genus)
+
+  filtered_data <- filtered_data %>%
+    mutate(
+      cleaned_genus = sub("^g__", "", genus),  # Remove g_ prefix from genus for display
+      cleaned_phylum = sub("^p__", "", phylum),  # Remove p_ prefix from phylum for display
+      genus_color = ifelse(genus %in% top_genera, as.character(phylum), "Other"), # Use original phylum for color mapping
+      genus_label = ifelse(genus %in% top_genera, paste(cleaned_genus, "(", cleaned_phylum, ")"), "Other") # Use cleaned genus and phylum for labeling
+    )
+  
+  # Reorder 'genus_label' factor by genus abundance, using cleaned phylum names for display
+filtered_data <- filtered_data %>%
+  mutate(genus_label = factor(
+    genus_label,
+    levels = c(paste(sub("^g__", "", top_genera), "(", sub("^p__", "", filtered_data$phylum[match(top_genera, filtered_data$genus)]), ")"), "Other")
+  ))
+
+  # Prepare the phylum colors
+  phylum_colors_named <- phylum_colors #[-4]
+  names(phylum_colors_named) <- levels(filtered_data$phylum)
+
+  # Generate color mapping for each genus within its phylum
+  color_mapping <- c()
+  for (phylum in unique(filtered_data$phylum)) {
+    phylum_data <- filtered_data %>%
+      filter(phylum == !!phylum & genus_label != "Other") %>%
+      distinct(genus_label)
+
+    n_genera <- nrow(phylum_data)
+    phylum_color <- phylum_colors_named[phylum]
+
+    if (n_genera > 0) {
+      # Generate shades for each genus
+      phylum_shades <- generate_shades(phylum_color, n_genera)
+      names(phylum_shades) <- phylum_data$genus_label
+      color_mapping <- c(color_mapping, phylum_shades)
+    }
+  }
+
+  # Add grey color for 'Other' category
+  color_mapping["Other"] <- "grey"
+
+  # Generate the plot
+  p <- ggplot(filtered_data, aes(x = count, y = microsample, fill = genus_label, group = interaction(phylum, genus_for_plot))) +
+    geom_bar(stat = "identity", colour = "white", linewidth = 0.05) + # Stacked bars with white borders
+    scale_fill_manual(values = color_mapping, drop = FALSE) + # Use manual color scale
+    labs(
+      x = "Bacterial composition",
+      y = "Microsamples",
+      fill = "Genus (Phylum)",
+      title = plot_params$plot_title
+    ) +
+    facet_nested(as.formula(plot_params$facet_formula), scales = "free", space = "free") + # Dynamic faceting
+    guides(fill = guide_legend(ncol = 1)) +
+    custom_ggplot_theme
+  return(list(plot = p, height = plot_height))
+}
+```
+
+
+
+### Composition plotting function
+To plot figures for all the experiments.
+Parameters for each experiment set in the previous chapter.
+```{r plot_taxonomy_barplot_function, warning=FALSE, comments="", message=FALSE}
+generate_and_save_plots <- function(taxonomy_dataset, plot_base_name, plot_params_list, plot_function, filter_quality = NULL, filter_type = NULL) {
+  
+  # Initialize a list to store the plots
+  plots_list <- list()
+  
+  # Loop through each set of plot parameters and generate plots
+  for (param_name in names(plot_params_list)) {
+    plot_params <- plot_params_list[[param_name]]
+    
+    # Call the plotting function dynamically
+    result <- plot_function(
+      taxonomy_data = taxonomy_dataset,
+      plot_params = plot_params,
+      filter_quality = filter_quality,  # Pass quality filter
+      filter_type = filter_type         # Pass type filter
+    )
+    
+    # Extract the plot and the dynamic height
+    plot <- result$plot
+    plot_height <- result$height
+    
+    # Store the plot in the list
+    plots_list[[param_name]] <- plot
+    
+    # Print the plot
+    print(plot)
+    
+    # Save the plot as an image file
+    ggsave(
+      filename = paste0("results/figures/taxonomy/", plot_base_name, param_name, ".jpg"),
+      plot = plot,
+      device = "jpg",
+      width = 30,
+      height = plot_height, 
+      units = "cm", 
+      dpi = 300, 
+      limitsize = FALSE
+    )
+  }
+  # Return the list of plots
+  return(plots_list)
+}
+```
+
+
+
+### Generate taxonomy datasets
+
+Filtered data (30% coverage).
+```{r generate_taxonomy_filtered, warning=FALSE, comments="", message=FALSE}
+taxonomy_dataset_filt <- prepare_taxonomy_dataset(
+  genome_counts_df = genome_counts_filt, 
+  genome_metadata = genome_metadata, 
+  sample_metadata = sample_metadata, 
+  quality = quality
+  )
+
+#print(taxonomy_dataset_filt)
+```
+
+Unfiltered data.
+```{r generate_taxonomy_unfiltered, warning=FALSE, comments="", message=FALSE}
+taxonomy_dataset_unfilt <- prepare_taxonomy_dataset(
+  genome_counts_df = genome_counts, 
+  genome_metadata = genome_metadata, 
+  sample_metadata = sample_metadata, 
+  quality = quality
+  )
+
+#print(taxonomy_dataset_unfilt)
+```
+
+
+### Generate plots 
+
+Filtered data, phylum level.
+```{r plot_taxonomy_filtered_phyla, fig.height=7, fig.width=12, fig.fullwidth=TRUE}
+plots <- generate_and_save_plots(
+  taxonomy_dataset = taxonomy_dataset_filt, 
+  plot_base_name = "tax_filt_phyla_", 
+  plot_params_list = plot_params_list, 
+  plot_function = plot_taxonomy_data,
+  filter_quality = 5, 
+  filter_type = c("Positive")
+  )
+```
+Filtered data, genus level.
+```{r plot_taxonomy_filtered_genera, fig.height=7, fig.width=12, fig.fullwidth=TRUE}
+plots <- generate_and_save_plots(
+  taxonomy_dataset = taxonomy_dataset_filt, 
+  plot_base_name = "tax_filt_genus_", 
+  plot_params_list = plot_params_list, 
+  plot_function = genus_plot_taxonomy_data,
+  filter_quality = 5, 
+  filter_type = c("Positive")
+  )
+```
+
+Unfiltered data, phylum level.
+```{r plot_taxonomy_unfiltered_phyla, fig.height=7, fig.width=12, fig.fullwidth=TRUE}
+plots <- generate_and_save_plots(
+  taxonomy_dataset = taxonomy_dataset_unfilt, 
+  plot_base_name = "tax_unfilt_phyla_", 
+  plot_params_list = plot_params_list, 
+  plot_function = plot_taxonomy_data,
+  filter_quality = NULL, 
+  filter_type = NULL
+  )
+```
+
+Unfiltered data, genus level.
+```{r plot_taxonomy_unfiltered_genera, fig.height=7, fig.width=12, fig.fullwidth=TRUE}
+plots <- generate_and_save_plots(
+  taxonomy_dataset = taxonomy_dataset_unfilt, 
+  plot_base_name = "tax_unfilt_genus_", 
+  plot_params_list = plot_params_list, 
+  plot_function = genus_plot_taxonomy_data,
+  filter_quality = NULL, 
+  filter_type = NULL
+  )
+```
+
+
+## Phylogeny & MAG heatmap visualisation
+
+### Define MAG overview plotting fuction
+
+Visualise a phylogenetic tree from the already made 'genome_tree' (bioinformatics pipeline).
+Colour the tips (genomes) by phylum.
+```{r create_tree, warning=FALSE, comments="", message=FALSE}
+vertical_tree <- force.ultrametric(genome_tree, method = "extend") %>%
+  ggtree(., size = 0.3)
+
+phylum_colors_2 <- read_tsv("https://raw.githubusercontent.com/earthhologenome/EHI_taxonomy_colour/main/ehi_phylum_colors.tsv", show_col_types = FALSE) %>%
+  right_join(genome_metadata, by = join_by(phylum == phylum)) %>%
+  arrange(match(genome, genome_tree$tip.label)) %>%
+  mutate(phylum = factor(phylum, levels = unique(phylum))) %>%
+  column_to_rownames(var = "genome") %>%
+  select(phylum)
+
+colors_alphabetic <- read_tsv("https://raw.githubusercontent.com/earthhologenome/EHI_taxonomy_colour/main/ehi_phylum_colors.tsv", show_col_types = FALSE) %>%
+  right_join(genome_metadata, by = join_by(phylum == phylum)) %>%
+  arrange(match(genome, genome_tree$tip.label)) %>%
+  select(phylum, colors) %>%
+  unique() %>%
+  arrange(phylum) %>%
+  select(colors) %>%
+  pull()
+
+vertical_tree <- gheatmap(vertical_tree, phylum_colors_2, offset = -0.3, width = 0.1, colnames = FALSE) +
+  scale_fill_manual(values = colors_alphabetic) +
+  new_scale_fill()
+```
+Plot a heatmap next to the already created tree.
+NB!Here we do not filter for genomes that are 0 or NA across all samples in the current dataset, as the number of tips on the tree is set. 
+NB! Faceting does not work with gheatmap. We need to order the samples in a way that makes sence in the heatmap.
+NB! We get two 'value' scalebars - need to remove one.
+```{r heatmap_function, warning=FALSE, comments="", message=FALSE}
+plot_tree_heaatmap <- function(counts, plot_base_name, plot_params_list, filter_type = NULL) {
+  
+  # Initialize a list to store the plots
+  plots_list <- list()
+  
+  # Loop through each set of plot parameters and generate plots
+  for (param_name in names(plot_params_list)) {
+    plot_params <- plot_params_list[[param_name]]
+
+  
+    # Apply filters based on plot_params
+    sample_selection <- sample_metadata
+  
+    # Dynamically apply filter conditions
+    if (length(plot_params$filter_conditions) > 0) {
+      sample_selection <- sample_selection %>% filter(!!!plot_params$filter_conditions)
+    }
+  
+    # Dynamically apply the type filter (positive/negative) if provided
+    if (!is.null(filter_type)) {
+      sample_selection <- sample_selection %>% filter(type %in% filter_type)
+    }
+  
+    valid_samples <- intersect(sample_selection$microsample, colnames(counts))
+    genome_counts_selected <- counts %>%
+      select(all_of(c("genome", valid_samples))) %>%
+      column_to_rownames(var = "genome") %>%
+      tss()
+  
+    vertical_tree_output <- gheatmap(vertical_tree, genome_counts_selected, 
+                                     offset = -0.1, width = 0.7, colnames = TRUE, 
+                                     colnames_angle = 90, font.size = 0.2, 
+                                     colnames_position = "top", colnames_offset_y = 5) +
+      vexpand(.08) +
+      coord_cartesian(clip = "off") +
+      scale_fill_gradient(low = "#f4f4f4", high = "#315b7d", na.value = "white") +
+      labs(x = 'relative_abundance', 
+                title = plot_params$plot_title
+      ) 
+    
+    # Store the plot in the list
+    plots_list[[param_name]] <- vertical_tree_output
+    
+    # Print the plot
+    print(vertical_tree_output)
+    
+    # Save the plot as an image file
+    ggsave(
+      filename = paste0("results/figures/tree_heatmaps/", plot_base_name, param_name, ".jpg"),
+      plot = vertical_tree_output,
+      device = "jpg",
+      width = 30,
+      height = 30, 
+      units = "cm", 
+      dpi = 300, 
+      limitsize = FALSE
+    )
+  }
+  # Return the list of plots
+  return(plots_list)
+}   
+```
+
+### Generate MAG tree & relative abundance plots
+
+Filtered data, only positive samples.
+```{r heatmap_filtered_positive, fig.height=7, fig.width=12, fig.fullwidth=TRUE}
+plots <- plot_tree_heaatmap(
+  counts = genome_counts_filt, 
+  plot_base_name = "tree_heatmap_filt_positive_", 
+  plot_params_list = plot_params_list, 
+  filter_type = c("Positive")
+  )
+```
+
+Unfiltered data, only positive samples.
+```{r heatmap_unfiltered_positive, fig.height=7, fig.width=12, fig.fullwidth=TRUE}
+plots <- plot_tree_heaatmap(
+  counts = genome_counts, 
+  plot_base_name = "tree_heatmap_unfilt_positive_", 
+  plot_params_list = plot_params_list, 
+  filter_type = c("Positive")
+  )
+```
+
+Unfiltered data, only negative samples.
+```{r heatmap_unfiltered_negative, fig.height=7, fig.width=12, fig.fullwidth=TRUE}
+plots <- plot_tree_heaatmap(
+  counts = genome_counts,
+  plot_base_name = "tree_heatmap_unfilt_negative_",
+  plot_params_list = plot_params_list[1:7], # 1:7 because the rest do not include negatives
+  filter_type = c("NegativeMembrane", "NegativeCollection", "NegativeReaction")
+  )
+```
+
+
+## Composition jitterplot functions
+
+```{r jitterplot_function, warning=FALSE, comments="", message=FALSE}
+plot_jitterplot <- function(taxonomy_data, plot_base_name, plot_params_list, taxon_level, filter_type = NULL) {
+
+    # Initialize a list to store the plots
+  plots_list <- list()
+  
+  # Loop through each set of plot parameters and generate plots
+  for (param_name in names(plot_params_list)) {
+    plot_params <- plot_params_list[[param_name]]
+
+  
+      # Apply filters based on plot_params
+    filtered_data <- taxonomy_data
+  
+    # Dynamically apply filter conditions1
+    if (length(plot_params$filter_conditions) > 0) {
+      filtered_data <- filtered_data %>% filter(!!!plot_params$filter_conditions)
+    }
+  
+    # Dynamically apply the type filter (positive/negative) if provided
+    if (!is.null(filter_type)) {
+      filtered_data <- filtered_data %>% filter(type %in% filter_type)
+    }
+    
+      # Conditionally apply factor() for size based on the presence of 'size' in plot_params$fill_var
+    if (grepl("size", plot_params$fill_var)) {
+      filtered_data <- filtered_data %>%
+        mutate(size = factor(size, levels = c(500, 1500, 2500, 5000, 25000, 50000)))
+    }
+    
+    # Apply special processing if taxon_level is genus
+    if (taxon_level == "genus") {
+      filtered_data <- filtered_data %>%
+        filter(genus != "g__") %>%                       # Filter out "g__" genus
+        mutate(genus = sub("^g__", "", genus))           # Remove the "g__" prefix
+    }
+    
+    summary <- filtered_data %>%
+      group_by(!!sym(taxon_level)) %>%
+      summarise(mean = geometric.mean(count, na.rm = T)) %>% #geometric mean because it is a %
+      arrange(-mean)
+    
+    
+    plot_data <- filtered_data %>%
+      mutate(!!sym(taxon_level) := factor(!!sym(taxon_level), levels = rev(summary %>% pull(!!sym(taxon_level)))))
+    
+    
+    new_facet_formula <- gsub("(.*) ~ (.*)", "\\2 ~ \\1", plot_params$facet_formula)
+  
+    plot <- plot_data %>%
+      ggplot(aes(x = count, y = !!sym(taxon_level), group = !!sym(taxon_level), color = phylum)) +
+        scale_color_manual(values = phylum_colors) +
+        geom_jitter(alpha = 0.3, size=0.5) +
+        facet_nested(as.formula(new_facet_formula)) +
+        theme_minimal() +
+        labs(y = "Family", 
+             x = "Relative abundance", 
+             color = "Phylum",
+             title = plot_params$plot_title)+
+        custom_ggplot_theme
+
+    # Store the plot in the list
+    plots_list[[param_name]] <- plot
+    
+    # Print the plot
+    print(plot)
+    
+    # Save the plot as an image file
+    ggsave(
+      filename = paste0("results/figures/composition_jitterplots/", plot_base_name, param_name, ".jpg"),
+      plot = plot,
+      device = "jpg",
+      width = 30,
+      height = 30, 
+      units = "cm", 
+      dpi = 300, 
+      limitsize = FALSE
+    )
+  }
+  # Return the list of plots
+  return(plots_list)
+}
+```
+
+
+Coverage filtered, positive samples, genome level
+```{r jitterplot_filtered_positive_genome, fig.height=7, fig.width=12, fig.fullwidth=TRUE}
+plots <- plot_jitterplot(
+  taxonomy_data = taxonomy_dataset_filt, 
+  plot_base_name = "jitterplot_filt_genome_positive_", 
+  plot_params_list = plot_params_list,
+  taxon_level = 'genome',
+  filter_type = c("Positive")
+  )
+```
+Coverage filtered, positive samples, genus level
+```{r jitterplot_filtered_positive_genus, fig.height=7, fig.width=12, fig.fullwidth=TRUE}
+plots <- plot_jitterplot(
+  taxonomy_data = taxonomy_dataset_filt, 
+  plot_base_name = "jitterplot_filt_genus_positive_", 
+  plot_params_list = plot_params_list,
+  taxon_level = 'genus',
+  filter_type = c("Positive")
+  )
+```
+Not-filtered, positive samples, genome level
+```{r jitterplot_unfiltered_positive_genome, fig.height=7, fig.width=12, fig.fullwidth=TRUE}
+plots <- plot_jitterplot(
+  taxonomy_data = taxonomy_dataset_unfilt, 
+  plot_base_name = "jitterplot_unfilt_genome_positive_", 
+  plot_params_list = plot_params_list,
+  taxon_level = 'genome',
+  filter_type = c("Positive")
+  )
+```
+
+Not-filtered, positive samples, genus level
+```{r jitterplot_unfiltered_positive_genus, fig.height=7, fig.width=12, fig.fullwidth=TRUE}
+plots <- plot_jitterplot(
+  taxonomy_data = taxonomy_dataset_unfilt, 
+  plot_base_name = "jitterplot_unfilt_genus_positive_", 
+  plot_params_list = plot_params_list,
+  taxon_level = 'genus',
+  filter_type = c("Positive")
+  )
+```
+
+Not-filtered, negative controls, genome level
+```{r jitterplot_unfiltered_negative_genome, fig.height=7, fig.width=12, fig.fullwidth=TRUE}
+plots <- plot_jitterplot(
+  taxonomy_data = taxonomy_dataset_unfilt, 
+  plot_base_name = "jitterplot_unfilt_genome_negative_", 
+  plot_params_list = plot_params_list[1:7], # 1:7 because the rest do not include negatives
+  taxon_level = 'genome',
+  filter_type = c("NegativeMembrane", "NegativeCollection", "NegativeReaction")
+  )
+```
+
+Not-filtered, negative controls, genus level
+```{r jitterplot_unfiltered_negative_genus, fig.height=7, fig.width=12, fig.fullwidth=TRUE}
+plots <- plot_jitterplot(
+  taxonomy_data = taxonomy_dataset_unfilt, 
+  plot_base_name = "jitterplot_unfilt_genus_negative_", 
+  plot_params_list = plot_params_list[1:7], # 1:7 because the rest do not include negatives
+  taxon_level = 'genus',
+  filter_type = c("NegativeMembrane", "NegativeCollection", "NegativeReaction")
+  )
+```
+
+
+## Covariance
+NB! This is not compositional and must be checked with compositional math too.
+
+```{r genus_correlations, warning=FALSE, comments="", message=FALSE}
+taxon_level <- "genus"
+
+taxon_list <- c("g__Lactobacillus", "g__Escherichia", "g__Streptococcus", "g__Eisenbergiella", "g__Mediterraneibacter", "g__Caccovicinus")
+
+genus_summary <- genome_counts_filt %>%
+  mutate_at(vars(-genome), ~ . / sum(.)) %>% # apply TSS nornalisation
+  pivot_longer(-genome, names_to = "microsample", values_to = "count") %>% # reduce to minimum number of columns
+  left_join(sample_metadata, by = join_by(microsample == microsample)) %>% # append sample metadata
+  left_join(quality, by = join_by(microsample == microsample)) %>%
+  filter(quality >= 5) %>%
+  left_join(., genome_metadata, by = join_by(genome == genome)) %>% # append genome metadata
+  group_by(microsample, cryosection, !!sym(taxon_level)) %>%
+  summarise(relabun = sum(count))
+```
+
+```{r genus_correlations_plot, warning=FALSE, comments="", message=FALSE, fig.height=8, fig.width=10, fig.fullwidth=TRUE}
+genus_summary %>%
+  mutate(individual = substr(cryosection, 1, 4)) %>%
+  filter(genus %in% c("g__Caccovicinus", "g__Streptococcus")) %>%
+  pivot_wider(names_from = genus, values_from = relabun) %>%
+  ggplot(aes(x = g__Caccovicinus, y = g__Streptococcus)) +
+  geom_point() +
+  geom_smooth(method = lm, color = "red", fill = "#69b3a2", se = TRUE) +
+  facet_grid(~individual) +
+  theme_minimal()
+
+genus_summary %>%
+  mutate(individual = substr(cryosection, 1, 4)) %>%
+  filter(genus %in% c("g__Lactobacillus", "g__Streptococcus")) %>%
+  pivot_wider(names_from = genus, values_from = relabun) %>%
+  ggplot(aes(x = g__Lactobacillus, y = g__Streptococcus)) +
+  geom_point() +
+  geom_smooth(method = lm, color = "red", fill = "#69b3a2", se = TRUE) +
+  facet_grid(~individual) +
+  theme_minimal()
+
+genus_summary %>%
+  mutate(individual = substr(cryosection, 1, 4)) %>%
+  filter(genus %in% c("g__Lactobacillus", "g__Mediterraneibacter")) %>%
+  pivot_wider(names_from = genus, values_from = relabun) %>%
+  ggplot(aes(x = g__Mediterraneibacter, y = g__Lactobacillus)) +
+  geom_point() +
+  geom_smooth(method = lm, color = "red", fill = "#69b3a2", se = TRUE) +
+  facet_grid(~individual) +
+  theme_minimal()
+
+genus_summary %>%
+  mutate(individual = substr(cryosection, 1, 4)) %>%
+  filter(genus %in% c("g__Streptococcus", "g__Mediterraneibacter")) %>%
+  pivot_wider(names_from = genus, values_from = relabun) %>%
+  ggplot(aes(x = g__Streptococcus, y = g__Mediterraneibacter)) +
+  geom_point() +
+  geom_smooth(method = lm, color = "red", fill = "#69b3a2", se = TRUE) +
+  facet_grid(~individual) +
+  theme_minimal()
+
+genus_summary %>%
+  mutate(individual = substr(cryosection, 1, 4)) %>%
+  filter(genus %in% c("g__Lactobacillus", "g__Caccovicinus")) %>%
+  pivot_wider(names_from = genus, values_from = relabun) %>%
+  ggplot(aes(x = g__Caccovicinus, y = g__Lactobacillus)) +
+  geom_point() +
+  geom_smooth(method = lm, color = "red", fill = "#69b3a2", se = TRUE) +
+  facet_grid(~individual) +
+  theme_minimal()
+
+genus_summary %>%
+  mutate(individual = substr(cryosection, 1, 4)) %>%
+  filter(genus %in% c("g__Lactobacillus", "g__Escherichia")) %>%
+  pivot_wider(names_from = genus, values_from = relabun) %>%
+  ggplot(aes(x = g__Escherichia, y = g__Lactobacillus)) +
+  geom_point() +
+  geom_smooth(method = lm, color = "red", fill = "#69b3a2", se = TRUE) +
+  facet_grid(~individual) +
+  theme_minimal()
+
+genus_summary %>%
+  mutate(individual = substr(cryosection, 1, 4)) %>%
+  filter(genus %in% c("g__Streptococcus", "g__Caccovicinus")) %>%
+  pivot_wider(names_from = genus, values_from = relabun) %>%
+  ggplot(aes(x = g__Streptococcus, y = g__Caccovicinus)) +
+  geom_point() +
+  geom_smooth(method = lm, color = "red", fill = "#69b3a2", se = TRUE) +
+  facet_grid(~individual) +
+  theme_minimal()
+```

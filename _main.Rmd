@@ -1,0 +1,2241 @@
+---
+title: "3D'omics | Avian microbiome - Methods MSSM manuscript"
+author:
+- Antton Alberdi^[University of Copenhagen, antton.alberdi@sund.ku.dk]
+- Amalia Bogri^[University of Copenhagen, amalia.bogri@sund.ku.dk]
+date: "`r Sys.Date()`"
+subtitle: Work in progress
+site: bookdown::bookdown_site
+documentclass: book
+bibliography:
+- book.bib
+- packages.bib
+url: "https://3d-omics.github.io/XXXX"
+description: |
+  Data analysis code for 3D'omics microdissection methods manuscript (MSSM)
+link-citations: true
+github-repo: "3d-omics/XXX"
+---
+
+```{r knitr_opts, echo=FALSE}
+knitr::opts_chunk$set(
+    class.source = "script-source",
+    class.output = "script-output",
+    comment = NA)
+```
+
+# Introduction
+
+This webbook contains all the code used for the analyses of the MSSM methods manuscript.
+
+## Prepare the R environment
+
+### Environment
+
+To reproduce all the analyses locally, clone this repository in your computer using:
+
+```
+RStudio > New Project > Version Control > Git
+```
+
+And indicating the following git repository:
+
+> https://github.com/3d-omics/XXX
+
+Once the R project has been created, follow the instructions and code chunks shown in this webbook.
+
+### Libraries
+
+The following R packages are required for the data analysis.
+
+```{r load_libraries, warning=FALSE, comments="", message=FALSE}
+# Base
+library(R.utils)
+library(knitr)
+library(devtools)
+library(tinytable)
+library(broom)
+library(broom.mixed)
+library(rairtable)
+
+# For tree handling
+library(ape)
+library(phyloseq)
+library(phytools)
+
+# For plotting
+library(ggplot2)
+library(ggrepel)
+library(ggpubr)
+library(ggnewscale)
+library(gridExtra)
+library(ggtreeExtra)
+library(ggtree)
+library(ggh4x)
+library(jpeg)
+library(patchwork)
+
+# For statistics
+library(spaa)
+library(vegan)
+library(Rtsne)
+library(geiger)
+library(hilldiv2)
+library(distillR)
+library(ANCOMBC)
+library(lme4)
+library(Hmsc)
+library(psych)
+
+# For compositional analyses
+library(zCompositions)
+library(compositions)
+
+# Tidyverse libraries (load dplyr last to avoid conflicts)
+library(tidyverse)
+library(dplyr)  # Explicitly load dplyr last
+
+```
+## Notes:
+### Installation of modules
+Most of the modules can be downloaded from CRAN with 'install.packages('XXX', dependencies = TRUE)'.
+Four modules are from Bioconductor. 
+Install with: 'install.packages('BiocManager', dependencies = TRUE)
+BiocManager::install(c("phyloseq", "ggtreeExtra","ggtree","ANCOMBC"))'
+Two modules are from Antton's github. 
+Install with: 'install.packages('remotes', dependencies = TRUE)
+remotes::install_github('anttonalberdi/hilldiv2')
+remotes::install_github('anttonalberdi/distillR')'
+
+### Airtable access:
+Currently the metadata is loaded from the 3D'omics airtable. In order to access it you need your own API key (from Antton). set_airtable_api_key('XXXXX', install = TRUE)
+
+
+<!--chapter:end:index.Rmd-->
+
+# Data preparation
+
+## Sample metadata
+Import sample metadata from the airtable.
+```{r sample_metadata, message=FALSE, eval=FALSE}
+sample_metadata <- airtable("4-MSE-Info", "appKakM1bnKSekwuW") %>% # get base ID from Airtable browser URL
+  read_airtable(., fields = c("ID", "LabBatch_text", "IntestinalSection", "SampleType", 
+                              "Xcoord", "Ycoord", "SizeApprox", "cryosection_text", "buffer_text", 
+                              "Collection_Success", "Collection_attempts", "UsedCycles", "animal_temp", "Protocol_text"), id_to_col = TRUE) %>%
+  filter(LabBatch_text %in% c("MSEB0006", "MSEB0009", "MSEB0010", "MSEB0011", "MSEB0012", "MSEB0014", "MSEB0015")) %>%
+  rename(batch = LabBatch_text, microsample = ID, section = IntestinalSection, type = SampleType, 
+         cryosection = cryosection_text, buffer = buffer_text, collection = Collection_Success, collection_attempts = Collection_attempts, 
+         cycles = UsedCycles, animal = animal_temp, size = SizeApprox, protocol = Protocol_text) %>%
+  select(microsample, section, type, batch, 
+         cryosection, buffer, Xcoord, Ycoord, 
+         size, collection, collection_attempts, 
+         cycles, animal, protocol) %>%
+  unnest(c(section, Xcoord, Ycoord, size, collection, cycles)) %>%
+  arrange(microsample)
+
+print(names(sample_metadata))
+
+```
+
+## Count data
+```{r load_count, message=FALSE, eval=FALSE, warning=FALSE, comments=""}
+read_counts <- read_tsv("data/MSEB0006_read_counts.tsv", show_col_types = FALSE) %>%
+  left_join(read_tsv("data/MSEB0009_read_counts.tsv", show_col_types = FALSE), by = "sequence_id") %>%
+  left_join(read_tsv("data/MSEB0010_read_counts.tsv", show_col_types = FALSE), by = "sequence_id") %>%
+  left_join(read_tsv("data/MSEB0011_read_counts.tsv", show_col_types = FALSE), by = "sequence_id") %>%
+  left_join(read_tsv("data/MSEB0012_read_counts.tsv", show_col_types = FALSE), by = "sequence_id") %>%
+  left_join(read_tsv("data/MSEB0014_read_counts.tsv", show_col_types = FALSE), by = "sequence_id") %>%
+  left_join(read_tsv("data/MSEB0015_read_counts.tsv", show_col_types = FALSE), by = "sequence_id") %>%
+  rename(genome = 1) %>%
+  pivot_longer(!genome, names_to = "data", values_to = "counts") %>%
+  mutate(sample = substr(data, 1, 7)) %>%
+  group_by(genome, sample) %>%
+  summarise(counts = sum(counts), .groups = "drop") %>%
+  pivot_wider(names_from = "sample", values_from = "counts")
+```
+
+### Base hit table
+This is the document containing the number of nucleotide bases have been covered by at least one read in each sample and MAG. This information is used to calculate MAG coverage values.
+
+```{r load_hits, message=FALSE, eval=FALSE}
+basehits <- read_tsv("data/MSEB0006_covered_bases.tsv", show_col_types = FALSE) %>%
+  left_join(read_tsv("data/MSEB0009_covered_bases.tsv", show_col_types = FALSE), by = "sequence_id") %>%
+  left_join(read_tsv("data/MSEB0010_covered_bases.tsv", show_col_types = FALSE), by = "sequence_id") %>%
+  left_join(read_tsv("data/MSEB0011_covered_bases.tsv", show_col_types = FALSE), by = "sequence_id") %>%
+  left_join(read_tsv("data/MSEB0012_covered_bases.tsv", show_col_types = FALSE), by = "sequence_id") %>%
+  left_join(read_tsv("data/MSEB0014_covered_bases.tsv", show_col_types = FALSE), by = "sequence_id") %>%
+  left_join(read_tsv("data/MSEB0015_covered_bases.tsv", show_col_types = FALSE), by = "sequence_id") %>%
+  rename(genome = 1) %>%
+  pivot_longer(!genome, names_to = "data", values_to = "counts") %>%
+  mutate(sample = substr(data, 1, 7)) %>%
+  group_by(genome, sample) %>%
+  summarise(counts = sum(counts), .groups = "drop") %>%
+  pivot_wider(names_from = "sample", values_from = "counts")
+```
+
+### Genome metadata
+Relevant metadata of genomes is fetched from 2-3 files and merged into one genome metadata object for downstream analyses.
+
+#### Taxonomy
+This is the raw taxonomy table generated by GTDBtk, which is simplified for downstream analyses.
+```{r load_taxonomy, message=FALSE, eval=FALSE}
+genome_taxonomy <- read_tsv("data/genome_taxonomy.tsv", show_col_types = FALSE) %>%
+  rename(genome = user_genome) %>%
+  mutate(genome = str_replace_all(genome, "\\.fa", "")) %>%
+  separate(classification, c("domain", "phylum", "class", "order", "family", "genus", "species"), sep = ";") %>%
+  select(genome, domain, phylum, class, order, family, genus, species) %>%
+  arrange(match(genome, read_counts$genome))
+```
+
+#### Genome quality
+Quality properties of the genomes. 
+```{r load_quality, message=FALSE, eval=FALSE}
+genome_quality <- read_tsv("data/genome_quality.tsv", show_col_types = FALSE) %>%
+  rename(genome = 1) %>%
+  mutate(genome = str_replace_all(genome, "\\.fa", "")) %>%
+  arrange(match(genome, read_counts$genome)) %>%
+  select(genome, Completeness, Contamination, Coding_Density, Genome_Size) %>%
+  rename(completeness = Completeness, contamination = Contamination, coding_density = Coding_Density, length = Genome_Size)
+```
+
+#### Merged metadata object
+Merge taxonomy, length and quality information
+```{r create_genomemetadata, message=FALSE, eval=FALSE}
+genome_metadata <- genome_taxonomy %>%
+  left_join(genome_quality, by = join_by(genome == genome)) # join quality
+```
+
+### Genome tree
+This is the raw tree generated by GTDBtk, which needs to be pruned to obtain the phylogenetic tree of the genomes. Note that the archaeal tree is only generated if any archaeans are detected among the genomes.
+```{r load_tree, message=FALSE, warning=FALSE, eval=FALSE}
+genome_tree <- read.tree("data/genome_tree.tre")
+genome_tree$tip.label <- str_replace_all(genome_tree$tip.label, "'", "") # remove single quotes in MAG names
+genome_tree <- keep.tip(genome_tree, tip = read_counts$genome) # keep only MAG tips
+```
+
+### MAG functional annotations
+This is the raw annotation table generated by DRAM, which is used to generate GIFT data using distillR.
+```{r load_annotations, message=FALSE, eval=FALSE}
+genome_annotations <- read_tsv("data/genome_annotations.tsv.xz", show_col_types = FALSE) %>%
+  rename(gene = 1, genome = 2)
+```
+
+## Filter and normalise data
+Raw data needs to be filtered and normalised to make it useful for downstream analyses. 
+
+### Generate coverage table
+By dividing the number of base hits by the length of each genome, coverage values can be calculated.
+```{r calc_coverage, eval=FALSE}
+genome_coverage <- basehits %>%
+  mutate(across(where(is.numeric), ~ . / genome_metadata$length))
+```
+
+### Coverage filtering
+Genomes that have less than 30% of their length covered by reads are turned into zeros to account for the random allocation of reads across genomes due to mapping heuristics. 
+```{r filter_coverage, eval=FALSE}
+min_coverage <- 0.3
+read_counts_filt <- genome_coverage %>%
+  mutate(across(where(is.numeric), ~ ifelse(. > min_coverage, 1, 0))) %>%
+  mutate(across(-1, ~ . * read_counts[[cur_column()]]))
+```
+
+### Generate genome count table
+After filtering the low-coverage reads, read counts are transformed into genome counts using genome-length and read-length information.
+```{r calc_genometable, eval=FALSE}
+readlength <- 150 # change if sequencing read length is different
+genome_counts_filt <- read_counts_filt %>%
+  mutate(across(where(is.numeric), ~ . / (genome_metadata$length / readlength)))
+
+genome_counts <- read_counts %>%
+  mutate(across(where(is.numeric), ~ . / (genome_metadata$length / readlength)))
+```
+
+### Distil functional annotations
+Raw functional annotations are distilled into genome-inferred functional traits to generate biologically more meaningful functional traits for downstream analyses.
+
+```{r distill_annotations, warning=FALSE, comments="", message=FALSE, results='hide', eval=FALSE}
+genome_gifts <- distill(genome_annotations, GIFT_db, genomecol = 2, annotcol = c(9, 10, 19))
+```
+
+## Color scheme
+
+[AlberdiLab](www.alberdilab.dk) projects use unified color schemes developed for the [Earth Hologenome Initiative](www.earthhologenome.org), to facilitate figure interpretation.
+
+```{r get_ehi_colors, warning=FALSE, comments="", message=FALSE, eval=FALSE}
+phylum_colors <- read_tsv("https://raw.githubusercontent.com/earthhologenome/EHI_taxonomy_colour/main/ehi_phylum_colors.tsv", show_col_types = FALSE) %>%
+  right_join(genome_metadata, by = join_by(phylum == phylum)) %>%
+  arrange(match(genome, genome_tree$tip.label)) %>%
+  select(phylum, colors) %>%
+  unique() %>%
+  arrange(phylum) %>%
+  pull(colors, name = phylum)
+```
+
+## Wrap working objects
+In the last step, the objects that are needed for downstream analyses are stored in an R object.
+
+```{r wrap_objects, eval=FALSE}
+save(read_counts,
+  read_counts_filt,
+  genome_counts,
+  genome_counts_filt,
+  genome_tree,
+  genome_metadata,
+  genome_gifts,
+  sample_metadata,
+  phylum_colors,
+  file = "data/data.Rdata"
+)
+```
+
+- **read_counts**: Number of reads mapped to each genome in each sample. Note this is the unfiltered and unnormalised raw community composition table.
+- **genome_counts**: Number of genomes quantified in each sample, calculated through filtering and normalising ***read_counts***. This is the community composition table to be used in downstream analyses unless otherwise stated.
+- **genome_tree**: Phylogenetic tree of the genomes, to be employed in downstream phylogenetic analyses.
+- **genome_metadata**: Taxonomic and quality information of the genomes.
+- **sample_metadata**: Treatment/population and other relevant metadata of the samples.
+
+<!--chapter:end:1-data_preparation.Rmd-->
+
+# Data quality
+
+
+
+## Load the data that were prepared in the previous chapter.
+```{r load_data_quality}
+load("data/data.Rdata")
+```
+
+## Data loading
+
+### Define lists with the names of the files required for the statistics. 
+The files were produced by the bioinformatics pipeline, and located in 3D'omics ERDA.
+
+#### General sequencing statistics of sequencing.
+Used the multiqc_fastqc.txt because the multiqc_general_stats.txt did not exist in all batches.
+```{r stats_files_raw, warning=FALSE, comments="", message=FALSE}
+multiqc_fastqc_list <- c(
+  "https://sid.erda.dk/share_redirect/G2guEHWh9v/reports/by_step/reads_data/multiqc_fastqc.txt", # MSEB0006
+  "https://sid.erda.dk/share_redirect/HiPNk7p4MG/reports/by_step/reads_data/multiqc_fastqc.txt", # MSEB0009
+  "https://sid.erda.dk/share_redirect/cdU6P6sNuj/reports/by_step/reads_data/multiqc_fastqc.txt", # MSEB0010
+  "https://sid.erda.dk/share_redirect/EUKYidpvOO/reports/by_step/reads_data/multiqc_fastqc.txt", # MSEB0011
+  "https://sid.erda.dk/share_redirect/dEy2D1OmZi/reports/by_step/reads_data/multiqc_fastqc.txt", # MSEB0012
+  "https://sid.erda.dk/share_redirect/B0E8AbA7Eu/reports/by_step/reads_data/multiqc_fastqc.txt", # MSEB0014
+  "https://sid.erda.dk/share_redirect/hT3CftfSyw/reports/by_step/reads_data/multiqc_fastqc.txt" # MSEB0015
+)
+```
+
+#### General sequencing statistics of sequencing after trimming.
+```{r stats_files_trimmed, warning=FALSE, comments="", message=FALSE}
+multiqc_fastqc_trimmed_list <- list(
+  list(file = "https://sid.erda.dk/share_redirect/G2guEHWh9v/reports/by_step/preprocess_data/multiqc_fastqc.txt", column_name = "Total Sequences"), # MSEB0006
+  list(file = "https://sid.erda.dk/share_redirect/HiPNk7p4MG/reports/by_step/preprocess_data/multiqc_fastqc.txt", column_name = "Total Sequences"), # MSEB0009
+  list(file = "https://sid.erda.dk/share_redirect/cdU6P6sNuj/reports/by_step/preprocess_data/multiqc_fastqc.txt", column_name = "Total Sequences"), # MSEB0010
+  list(file = "https://sid.erda.dk/share_redirect/EUKYidpvOO/reports/by_step/preprocess_data/multiqc_fastqc.txt", column_name = "Total Sequences"), # MSEB0011
+  list(file = "https://sid.erda.dk/share_redirect/dEy2D1OmZi/reports/by_step/preprocess_data/multiqc_fastqc.txt", column_name = "Total Sequences"), # MSEB0012
+  list(file = "https://sid.erda.dk/share_redirect/hT3CftfSyw/reports/by_step/preprocess_data/multiqc_fastqc.txt", column_name = "Total Sequences"), # MSEB0015
+  list(file = "https://sid.erda.dk/share_redirect/B0E8AbA7Eu/reports/by_step/preprocess_data/samtools-flagstat-dp_Read_counts.txt", column_name = "Total Reads") # MSEB0014
+)
+```
+
+#### Percentage (%) of host and and of human mapped reads. 
+NB! This % is calculated on the trimmed reads. 
+NB! The reads are mapped to 3 databases (human, chicken, pig) sequentially, so the % is after removing reads mapped to the previous db.
+```{r stats_files_mapped_eukaryots, warning=FALSE, comments="", message=FALSE}
+host_human_mapping_files <- list(
+  list(file = "https://sid.erda.dk/share_redirect/G2guEHWh9v/reports/by_step/preprocess_data/multiqc_samtools_flagstat.txt", column_name = "mapped_passed_pct"), # MSEB0006
+  list(file = "https://sid.erda.dk/share_redirect/HiPNk7p4MG/reports/by_step/preprocess_data/multiqc_samtools_flagstat.txt", column_name = "mapped_passed_pct"), # MSEB0009
+  list(file = "https://sid.erda.dk/share_redirect/cdU6P6sNuj/reports/by_step/preprocess_data/multiqc_samtools_flagstat.txt", column_name = "mapped_passed_pct"), # MSEB0010
+  list(file = "https://sid.erda.dk/share_redirect/EUKYidpvOO/reports/by_step/preprocess_data/multiqc_samtools_flagstat.txt", column_name = "mapped_passed_pct"), # MSEB0011
+  list(file = "https://sid.erda.dk/share_redirect/dEy2D1OmZi/reports/by_step/preprocess_data/multiqc_samtools_flagstat.txt", column_name = "mapped_passed_pct"), # MSEB0012
+  list(file = "https://sid.erda.dk/share_redirect/hT3CftfSyw/reports/by_step/preprocess_data/multiqc_samtools_flagstat.txt", column_name = "mapped_passed_pct"), # MSEB0015
+  list(file = "https://sid.erda.dk/share_redirect/B0E8AbA7Eu/reports/by_step/preprocess_data/samtools-flagstat-dp_Percentage_of_total.txt", column_name = "Properly Paired") # MSEB0014
+)
+```
+
+#### Number and percentage (%) of bacteria mapped reads.
+NB! This % is calculated on the trimmed reads after filtering for human, chicken, and pig reads.
+'Non mapped reads' at this point are trimmed but not mapped to human, chicken, pig, or bacterial MAG catalogue.
+```{r stats_files_mapped_prokaryots, warning=FALSE, comments="", message=FALSE}
+bacteria_mapping_files <- c(
+  "https://sid.erda.dk/share_redirect/G2guEHWh9v/reports/by_step/quantify_data/multiqc_samtools_stats.txt", # MSEB0006
+  "https://sid.erda.dk/share_redirect/HiPNk7p4MG/reports/by_step/quantify_data/multiqc_samtools_stats.txt", # MSEB0009
+  "https://sid.erda.dk/share_redirect/cdU6P6sNuj/reports/by_step/quantify_data/multiqc_samtools_stats.txt", # MSEB0010
+  "https://sid.erda.dk/share_redirect/EUKYidpvOO/reports/by_step/quantify_data/multiqc_samtools_stats.txt", # MSEB0011
+  "https://sid.erda.dk/share_redirect/dEy2D1OmZi/reports/by_step/quantify_data/multiqc_samtools_stats.txt", # MSEB0012
+  "https://sid.erda.dk/share_redirect/B0E8AbA7Eu/reports/by_step/quantify_data/multiqc_samtools_stats.txt", # MSEB0014
+  "https://sid.erda.dk/share_redirect/hT3CftfSyw/reports/by_step/quantify_data/multiqc_samtools_stats.txt" # MSEB0015
+)
+```
+
+
+
+### Define functions to load the statistics.
+At this step we choose the relevant rows and columns from the bioinformatics output. 
+
+#### General sequencing statistics of sequencing.
+```{r load_stats_files_raw, warning=FALSE, comments="", message=FALSE}
+multiqc_fastqc_read_and_select <- function(file) {
+  read_tsv(file,
+    col_types = cols_only(
+      "Sample" = col_character(),
+      "Total Sequences" = col_double(),
+      "%GC" = col_double(),
+      "total_deduplicated_percentage" = col_double()
+    ),
+    show_col_types = FALSE
+  ) %>%
+    mutate(Sample = str_extract(Sample, "M\\d+")) %>%
+    rename(
+      microsample = Sample,
+      total_sequences = `Total Sequences`,
+      percent_gc = `%GC`,
+      percent_unique = total_deduplicated_percentage
+    ) %>%
+    select(microsample, total_sequences, percent_gc, percent_unique)
+}
+```
+
+#### General sequencing statistics of sequencing after trimming.
+```{r load_stats_files_trimmed, warning=FALSE, comments="", message=FALSE}
+trimmed_multiqc_fastqc_read_and_select <- function(file_info) {
+  file <- file_info$file  # Extract the file path
+  column_name <- file_info$column_name  # Extract the column name
+  read_tsv(file,
+    show_col_types = FALSE
+  ) %>%
+    mutate(Sample = str_extract(Sample, "M\\d+")) %>%
+    rename(
+      microsample = Sample,
+      total_trimmed_sequences = !!sym(column_name)
+    ) %>%
+    select(microsample, total_trimmed_sequences)
+}
+```
+
+#### Percentage (%) of host and and of human mapped reads. 
+```{r load_stats_files_mapped_eukaryots, warning=FALSE, comments="", message=FALSE}
+host_human_mapping_process_file <- function(file, column_name) {
+  read_tsv(file, show_col_types = FALSE) %>%
+    mutate(reference = case_when(
+      grepl("GRCh38", Sample, ignore.case = TRUE) ~ "human",
+      grepl("GRCg7b", Sample, ignore.case = TRUE) ~ "chicken",
+      TRUE ~ NA_character_
+    )) %>%
+    filter(!is.na(reference)) %>% # Remove rows where reference is NA
+    mutate(
+      microsample = str_extract(Sample, "M\\d+"),
+      reads_mapped_host_percent = ifelse(reference == "chicken", !!sym(column_name), NA_real_),
+      reads_mapped_human_percent = ifelse(reference == "human", !!sym(column_name), NA_real_)
+    ) %>%
+    select(microsample, reads_mapped_host_percent, reads_mapped_human_percent)
+}
+```
+
+#### Number and percentage (%) of bacteria mapped reads.
+```{r load_stats_files_mapped_prokaryots, warning=FALSE, comments="", message=FALSE}
+bacteria_mapping_process_file <- function(file) {
+  read_tsv(file, show_col_types = FALSE) %>%
+    filter(str_detect(Sample, "mgg-pbdrep")) %>% #select samples mapped to mgg-pdrep database (i.e. NO 'salmonella' or 'chicken big mag')
+    mutate(
+      microsample = str_extract(Sample, "M\\d+"),
+      reads_mapped_bacteria = reads_mapped,
+      reads_mapped_bacteria_percent = reads_mapped_percent
+    ) %>%
+    select(microsample, reads_mapped_bacteria, reads_mapped_bacteria_percent)
+}
+```
+
+
+### Load the statistics.
+Load each file with the functions above (to select the relevant columns/rows).
+Group by 'microsample' & estimate sums/means/etc. because in some files each microsample is split into two rows.
+Estimate the quality score of each sample, and add as a new column. This is optional and might be removed.
+Add an 'others', i.e. not mapped reads as a new column.
+Select which columns to include in the final object.
+```{r load_process_stats_files, warning=FALSE, comments="", message=FALSE}
+final_combined_stats <- bind_rows(
+  lapply(multiqc_fastqc_list, multiqc_fastqc_read_and_select),# Process FastQC stats files
+  lapply(multiqc_fastqc_trimmed_list, trimmed_multiqc_fastqc_read_and_select),# Process FastQC stats files after trimming
+  lapply(host_human_mapping_files, function(x) { # Process host and human mapping files
+    host_human_mapping_process_file(x$file, x$column_name)
+  }),
+  lapply(bacteria_mapping_files, bacteria_mapping_process_file) # Process bacterial mapping files
+) %>%
+  group_by(microsample) %>% # because there are two rows per sample in the multi_fastqc files. 
+  summarise(
+    total_sequences = sum(total_sequences, na.rm = TRUE), # sum the no. of sequences in the two rows of each sample
+    total_trimmed_sequences = sum(total_trimmed_sequences, na.rm = TRUE),
+    percent_gc = mean(percent_gc, na.rm = TRUE), # mean of GC% for the two rows. Only works because the no.of sequences is the same in the two rows.
+    percent_unique = mean(percent_unique, na.rm = TRUE), # mean of unique% for the two rows. Only works because the no.of sequences is the same in the two rows.
+    reads_mapped_host_percent = mean(reads_mapped_host_percent, na.rm = TRUE), # only one value here, so not actual mean
+    reads_mapped_human_percent = mean(reads_mapped_human_percent, na.rm = TRUE), # only one value here, so not actual mean
+    reads_mapped_bacteria = sum(reads_mapped_bacteria, na.rm = TRUE), # only one value here, so not actual sum
+    reads_mapped_bacteria_percent = mean(reads_mapped_bacteria_percent, na.rm = TRUE) # only one value here, so not actual sum
+  ) %>%
+  # estimate quality score of each sample
+  mutate(
+    depth = ifelse(total_sequences > 10000000, 1, 0),
+    duplicates = ifelse(percent_unique > 35, 1, 0),
+    gc = ifelse(percent_gc < 60, 1, 0),
+    human = ifelse(reads_mapped_human_percent < 5, 1, 0),
+    bacteria = ifelse(reads_mapped_bacteria_percent > 75, 1, 0),
+    quality = depth + duplicates + gc + human + bacteria,
+    reads_mapped_other_percent = 100 - (reads_mapped_bacteria_percent) # calculate 'other' reads percentage - the bacterial % is from the trimmed & filtered reads already
+  ) %>%
+  select(microsample, total_sequences, total_trimmed_sequences, percent_gc, percent_unique, 
+         reads_mapped_host_percent, reads_mapped_human_percent, 
+         reads_mapped_bacteria, reads_mapped_bacteria_percent, 
+         reads_mapped_other_percent, quality)
+```
+
+
+### Write the final stats dataframe to a TSV file
+```{r save_stats_file, warning=FALSE, comments="", message=FALSE}
+final_combined_stats %>% write_tsv("results/final_combined_stats.tsv")
+#print(final_combined_stats)
+```
+
+
+
+
+## Data plotting
+
+### Define lists that contain the settings for plotting each statistic.
+
+#### Sequencing depth
+This is the total number of sequenced reads.
+```{r stat_params_total_sequences, warning=FALSE, comments="", message=FALSE}
+stat_params_total_sequences <- list(
+  x_var = "total_sequences",
+  x_label = "Number of reads",
+  x_vline = 10000000,
+  stacked = FALSE
+)
+```
+
+#### Number of sequences after trimming
+This is the total number of sequenced reads after trimming the adaptors and low quality sequences.
+```{r stat_params_trimmed_sequences, warning=FALSE, comments="", message=FALSE}
+stat_params_trimmed_sequences <- list(
+  x_var = "total_trimmed_sequences",
+  x_label = "Number of trimmed reads",
+  x_vline = NULL,
+  stacked = FALSE
+)
+```
+
+#### Number of trimmed sequences
+This is the difference between total reads and reads after trimming.
+```{r stats_plot_param_total_trimmed, warning=FALSE, comments="", message=FALSE}
+prepare_stacked_data <- function(data) {
+  data %>%
+    mutate(trimmed_reads = total_sequences - total_trimmed_sequences) %>%
+    pivot_longer(cols = c(total_trimmed_sequences, trimmed_reads),
+                 names_to = "read_type", values_to = "reads") %>%
+    mutate(read_type = factor(read_type, levels = c("trimmed_reads", "total_trimmed_sequences")))
+}
+
+stat_params_compare_sequences <- list(
+  x_var = "total_trimmed_sequences",
+  x_label = "Number of trimmed reads",
+  x_vline = NULL,
+  stacked = TRUE
+)
+```
+
+#### Percentage (%) of unique sequences
+```{r stat_params_unique, warning=FALSE, comments="", message=FALSE}
+stat_params_unique <- list(
+  x_var = "percent_unique",
+  x_label = "% of unique sequences",
+  x_vline = 35,
+  stacked = FALSE
+)
+```
+
+#### Percentage (%) of GC content
+```{r stat_params_gc, warning=FALSE, comments="", message=FALSE}
+stat_params_gc <- list(
+  x_var = "percent_gc",
+  x_label = "% of GC content",
+  x_vline = 60,
+  stacked = FALSE
+)
+```
+
+#### Percentage (%) of host reads
+```{r stat_params_host_reads, warning=FALSE, comments="", message=FALSE}
+stat_params_host_reads <- list(
+  x_var = "reads_mapped_host_percent",
+  x_label = "% of host reads",
+  x_vline = NULL,
+  stacked = FALSE
+)
+```
+
+#### Percentage (%) of human reads
+```{r stat_params_human_reads, warning=FALSE, comments="", message=FALSE}
+stat_params_human_reads <- list(
+  x_var = "reads_mapped_human_percent",
+  x_label = "% of human reads",
+  x_vline = 5,
+  stacked = FALSE
+)
+```
+
+#### Percentage (%) of bacterial reads
+NB! In the next iteration, it is better to do this by using the counts dataset instead of the statistics file.
+```{r stat_params_bacteria_reads, warning=FALSE, comments="", message=FALSE}
+stat_params_bacteria_reads <- list(
+  x_var = "reads_mapped_bacteria_percent",
+  x_label = "% of bacteria reads",
+  x_vline = 75,
+  stacked = FALSE
+)
+```
+
+#### % of unmapped reads
+```{r stat_params_other_reads, warning=FALSE, comments="", message=FALSE}
+stat_params_other_reads <- list(
+  x_var = "reads_mapped_other_percent",
+  x_label = "% of other reads",
+  x_vline = 25,
+  stacked = FALSE
+)
+```
+
+#### Quality score
+```{r stat_quality_score, warning=FALSE, comments="", message=FALSE}
+stat_quality_score <- list(
+  x_var = "quality",
+  x_label = "Quality score",
+  x_vline = 5,
+  stacked = FALSE
+)
+```
+
+
+
+### Define a list of all the statistics settings that you want to plot.
+```{r stats_settings_list, warning=FALSE, comments="", message=FALSE}
+stat_params_list <- list(
+  stat_total_sequences = stat_params_total_sequences,
+  stat_trimmed_sequences = stat_params_trimmed_sequences,
+  stat_compare_sequences = stat_params_compare_sequences,
+  stat_unique = stat_params_unique,
+  stat_gc = stat_params_gc,
+  stat_host = stat_params_host_reads,
+  stat_human = stat_params_human_reads,
+  stat_bacteria = stat_params_bacteria_reads,
+  stat_other = stat_params_other_reads,
+  stat_quality = stat_quality_score
+)
+```
+
+
+
+
+### Define lists that contain the plot settings for different experiments/trials
+
+#### B11 vs B12 lysis buffers
+Compare buffer B11 and B12.
+Use batches MSEB0006 (caecum) and MSEB0010 (colon), from the focal (adult) chicken. 
+For the colon, use the samples that took 15 PCR cycles instead of 19 (due to the latter's low quality).
+```{r data_set_buffers, warning=FALSE, comments="", message=FALSE}
+plot_params_buffers <- list(
+  filter_conditions = list(
+    quote(section != "Ileum"),
+    quote(cycles < 16),
+    quote(batch == "MSEB0006" | batch == "MSEB0010")
+  ),
+  labels_title = "Lysis Buffer",
+  facet_formula = "section + type + buffer ~ .", #"batch + section + type ~ ."
+  scale_fill_manual_val = c('#ffdf9e','#ffc273'), # '#a3d1cf','#d1a3cf'
+  fill_var = "buffer",
+  plot_title = "Lysis Buffer trial"
+)
+```
+
+#### 15 vs 19 PCR cycles
+Use the colon samples (MSEB0010). Maybe separate by buffer??
+```{r data_set_cycles, warning=FALSE, comments="", message=FALSE}
+plot_params_cycles <- list(
+  filter_conditions = list(
+    quote(batch == "MSEB0010")
+  ),
+  labels_title = "PCR cycles",
+  facet_formula = "section + type + cycles ~ .", # "batch + section + type ~ ."
+  scale_fill_manual_val = c('#ffc273','#e56969'),
+  fill_var = "factor(cycles)",
+  plot_title = "PCR cycles trial"
+)
+```
+
+#### Limit of detection trial: Different LMD sizes
+Use batch MSEB0014 (caecum). 
+```{r data_set_LOD, warning=FALSE, comments="", message=FALSE}
+plot_params_LOD <- list(
+  filter_conditions = list(
+    quote(batch == "MSEB0014")
+  ),
+  labels_title = "LMD size",
+  facet_formula = "type + size ~ .", #"batch + section + type + cryosection ~ ."
+  scale_fill_manual_val = c('#ffdf9e','#ffc273','#e56969','#c1558b','#8a49a1','#4f5bd5'),
+  fill_var = "factor(size, levels = c(500, 1500, 2500, 5000, 25000, 50000))",
+  plot_title = "Limit of detection (LMD size)"
+)
+```
+
+#### Automation trial
+Compare the quality of library prep with DreamPrep (MSEB0015) vs manual (MSEB0011) for ceacum of focal chicken
+```{r data_set_automation, warning=FALSE, comments="", message=FALSE}
+plot_params_automation <- list(
+  filter_conditions = list(
+    quote(batch == "MSEB0011"|batch == "MSEB0015"), 
+    quote(animal == 'G121e')
+  ),
+  labels_title = "Automation",
+  facet_formula = "batch + type + cryosection ~ .", #"batch + section + type + cryosection ~ ."
+  scale_fill_manual_val = c('#e56969','#c1558b'),
+  fill_var = "batch",
+  plot_title = "Automation test"
+)
+```
+
+#### Full vs. half reaction (library prep with UltraLowV2 Tecan kit)
+Compare the quality of library prep with full reaction (MSEB0006, MSEB0009, MSEB0010) vs half reaction (MSEB0011, MSEB0012) of focal chicken, ceacum and colon (only low PCR cycles). NB! both buffers.
+```{r data_set_protocol, warning=FALSE, comments="", message=FALSE}
+plot_params_protocol <- list(
+  filter_conditions = list(
+    quote(section != "Ileum"), 
+    quote(batch != "MSEB0014"& batch != "MSEB0015"),
+    quote(animal == 'G121e'),
+    quote(cycles<16)
+  ),
+  labels_title = "Protocol",
+  facet_formula = "type + section + protocol ~ .", #"type + section + batch ~ ."
+  scale_fill_manual_val = c('#c1558b','#8a49a1'),
+  fill_var = "protocol",
+  plot_title = "Full vs. half reactions"
+)
+```
+
+#### Ceacum vs colon
+Compare the quality of colon vs caecum samples of the focal chicken (and only low PCR cycles)
+```{r data_set_section, warning=FALSE, comments="", message=FALSE}
+plot_params_section <- list(
+  filter_conditions = list(
+    quote(section != "Ileum"), 
+    quote(batch == "MSEB0009"|batch == "MSEB0010"|batch == "MSEB0011"|batch == "MSEB0012"),
+    quote(animal == 'G121e'),
+    quote(cycles<16)
+  ),
+  labels_title = "Section",
+  facet_formula = "type + section ~ .", #"type+ batch ~ ."
+  scale_fill_manual_val = c('#8a49a1','#4f5bd5'),
+  fill_var = "section",
+  plot_title = "Caecum vs colon"
+)
+```
+
+#### Adult vs young chicken
+Compare the quality of samples from the focal (adult) chicken vs the younger chicken, for both colon (MSEB0012) and caecum (MSEB0011).
+```{r data_set_animal, warning=FALSE, comments="", message=FALSE}
+plot_params_animal <- list(
+  filter_conditions = list(
+    quote(batch == "MSEB0011"|batch == "MSEB0012") 
+  ),
+  labels_title = "Animal",
+  facet_formula = "type + section + animal ~ .", #"type+ batch + section + animal ~ ."
+  scale_fill_manual_val = c('#ffc273','#c1558b'),
+  fill_var = "animal",
+  plot_title = "Adult vs young chicken"
+)
+```
+
+#### LMD collection attemps
+Compare the quality of samples coloured by the number of attempts to collect the LMD sample. LOD trial excluded.
+```{r data_set_collection_attempts, warning=FALSE, comments="", message=FALSE}
+plot_params_collection_attempts <- list(
+  filter_conditions = list(
+    quote(section != "Ileum"), 
+    quote(batch != "MSEB0014"),
+    quote(animal == 'G121e'),
+    quote(cycles<16),
+    quote(collection_attempts>0)
+  ),
+  labels_title = "Collection attempts",
+  facet_formula = "type + section + collection_attempts ~ .", #"type + section + batch ~ ."
+  scale_fill_manual_val = c('#ffdf9e','#ffc273','#e56969','#c1558b','#8a49a1','#4f5bd5'),
+  fill_var = "factor(collection_attempts)",
+  plot_title = "LMD collection attempts"
+)
+```
+
+#### LMD collection success
+Compare the quality of samples coloured by the LMD success jugded upon visual inspection of the collection lids. LOD trial excluded.
+```{r data_set_collection_success, warning=FALSE, comments="", message=FALSE}
+plot_params_collection_success <- list(
+  filter_conditions = list(
+    quote(section != "Ileum"), 
+    quote(batch != "MSEB0014"),
+    quote(animal == 'G121e'),
+    quote(cycles<16),
+    quote(collection_attempts>0)
+  ),
+  labels_title = "Collection_success",
+  facet_formula = "type + section + collection ~ .", #"type + section + batch ~ ."
+  scale_fill_manual_val = c('#ffc273','#e56969','#c1558b','#8a49a1','#4f5bd5'),
+  fill_var = "collection",
+  plot_title = "LMD collection success"
+)
+```
+
+
+
+
+### Define a list of all the experiments/trials settings that you want to plot.
+
+```{r experiment_settings_list, warning=FALSE, comments="", message=FALSE}
+plot_params_list <- list(
+  plot_buffers = plot_params_buffers, 
+  plot_cycles = plot_params_cycles,
+  plot_LOD = plot_params_LOD,
+  plot_automation = plot_params_automation,
+  plot_protocol = plot_params_protocol,
+  plot_section = plot_params_section,
+  plot_animal = plot_params_animal,
+  plot_collection_attempts = plot_params_collection_attempts,
+  plot_collection_success = plot_params_collection_success
+)
+
+```
+
+### Define barplot function
+
+First, define the plotting settings.
+```{r plot_function_settings, warning=FALSE, comments="", message=FALSE}
+# Define a custom theme for your taxonomy plots
+custom_ggplot_theme <- theme(
+  strip.text.y.left = element_text(angle = 0),
+  strip.text.y.right = element_text(angle = 0),
+  axis.text = element_text(size = 6),
+  axis.title = element_text(size = 12, face = "bold"),
+  strip.background = element_rect(fill = "#dde3e9", color = "white", size = 0.8),  # Custom facet strip background
+  strip.text = element_text(size = 8, face = "bold", color = "black"),  # Custom facet text
+  strip.placement = "outside",  # Place strip outside the panel grid
+  panel.spacing = unit(0.1, "lines"),  # Adjust space between panels
+  panel.grid.major = element_line(color = "#dde3e9"),  # Customize major grid lines
+  panel.grid.minor = element_blank(),  # Remove minor grid lines 
+  panel.background = element_rect(fill = "white"),  # Change panel background color
+  plot.margin = unit(c(1, 1, 1, 1), "cm")  # Adjust plot margins to ensure content fits
+)
+```
+
+This function can be used for plotting different statistics (see stat_params list) and different experiments (see plot_params list).
+```{r plot_function, warning=FALSE, comments="", message=FALSE, fig.height=17, fig.width=10, fig.fullwidth=TRUE}
+plot_data <- function(data, metadata, plot_params, stat_params, bar_width = 0.9) {
+  # Merge the data with metadata
+  plot_data <- data %>%
+    left_join(metadata, by = join_by(microsample == microsample)) 
+  
+  # Apply filters if provided
+  if (length(plot_params$filter_conditions) > 0) {
+    plot_data <- plot_data %>% filter(!!!plot_params$filter_conditions)
+  }
+  
+  # Preprocess data if stacked plot is needed
+  if (stat_params$stacked) {
+    plot_data <- prepare_stacked_data(plot_data)
+  }
+  
+    # Conditionally apply factor() for size based on the presence of 'size' in plot_params$fill_var
+  if (grepl("size", plot_params$fill_var)) {
+    plot_data <- plot_data %>%
+      mutate(size = factor(size, levels = c(500, 1500, 2500, 5000, 25000, 50000)))
+  }
+
+  # Calculate plot height dynamically based on number of microsamples
+  plot_height <- 5 + (nrow(plot_data) * 0.2) #10 + (nrow(plot_data) * 0.01)
+
+  # Create the ggplot object
+  p <- ggplot(plot_data) +
+    { if (stat_params$stacked) {
+      # Plot stacked bars if stacked is TRUE with fixed bar width
+      geom_col(aes(x = reads, y = microsample, fill = read_type), position = "stack", width = bar_width)
+    } else {
+      # Plot normal bars if stacked is FALSE with fixed bar width
+      geom_col(aes_string(x = stat_params$x_var, y = "microsample", fill = plot_params$fill_var, width = bar_width))
+    }} +
+    scale_fill_manual(values = if (stat_params$stacked) {
+      # Use different shades for stacked bars
+      c("total_trimmed_sequences" = plot_params$scale_fill_manual_val[1],
+        "trimmed_reads" = scales::muted(plot_params$scale_fill_manual_val[1]))
+    } else {
+      # Use specified colors for non-stacked plots
+      plot_params$scale_fill_manual_val
+    }) +
+    facet_nested(as.formula(plot_params$facet_formula), scales = "free", space = "free", switch = "y") +
+    custom_ggplot_theme +
+    labs(x = stat_params$x_label, 
+         y = "Microsamples", 
+         fill = plot_params$labels_title,
+         title = plot_params$plot_title
+    ) +
+    coord_cartesian(clip = "off")
+  
+  # Add geom_vline if x_vline is provided
+  if (!is.null(stat_params$x_vline)) {
+    p <- p + geom_vline(xintercept = stat_params$x_vline, linetype = "dashed", color = "#1f2455", size = 0.3)
+  }
+
+  # Return plot and calculated height
+  return(list(plot = p, height = plot_height))
+}
+```
+
+
+
+
+## Plot figures for all the statistics and all experiments.
+NB! This function also saves the plots in a file. Comment out if you don't want that.
+```{r plot_stats, warning=FALSE, comments="", message=FALSE, fig.width=20/2.54} 
+# Initialize a list to store plots #fig.height=10, fig.fullwidth=TRUE, fig.height=(5 + (nrow(plot_data) * 0.2)/ 2.54
+plots_list <- list()
+
+# Loop through each combination of plot_params and stat_params
+for (plot_param_name in names(plot_params_list)) {
+  plot_params <- plot_params_list[[plot_param_name]]
+  
+  for (stat_param_name in names(stat_params_list)) {
+    stat_params <- stat_params_list[[stat_param_name]]
+    
+    # Generate the plot with dynamic height
+    result <- plot_data(final_combined_stats, sample_metadata, plot_params, stat_params)
+    plot <- result$plot
+    plot_height <- result$height
+    
+    # Create a dynamic plot name
+    plot_name <- paste0(plot_param_name, "_", stat_param_name)
+    
+    # Store the plot in the list
+    plots_list[[plot_name]] <- plot
+    
+    # Print the plot
+    print(plot)
+    
+    # Save the plot to a file with dynamic height
+    ggsave(filename = paste0("results/figures/statistics/", plot_name, ".jpg"), 
+           plot = plot, 
+           device = "jpg", 
+           width = 30, 
+           height = plot_height, 
+           units = "cm", 
+           dpi = 300, 
+           limitsize = FALSE)
+  }
+}
+```
+
+<!--chapter:end:2-data_quality.Rmd-->
+
+# Community composition
+
+## Load data 
+Load the data produced in the previous chapter
+```{r load_data_composition, warning=FALSE, comments="", message=FALSE}
+load("data/data.Rdata")
+quality <- read_tsv("results/final_combined_stats.tsv",
+  col_types = cols_only(microsample = col_character(), quality = col_double()),
+  show_col_types = FALSE
+)
+```
+
+Prepare the dataset by joining the sample metadata, genome metadata, quality data to the counts data.
+```{r taxonomy_dataframe_function, warning=FALSE, comments="", message=FALSE}
+prepare_taxonomy_dataset <- function(genome_counts_df, genome_metadata, sample_metadata, quality) {
+  taxonomy_dataset <- genome_counts_df %>%
+    mutate_at(vars(-genome), ~ . / sum(.)) %>% # Apply TSS normalization (i.e., scale each sample to 1)
+    pivot_longer(-genome, names_to = "microsample", values_to = "count") %>% # Reduce to minimum number of columns
+    left_join(genome_metadata, by = join_by(genome == genome)) %>% # Append genome metadata
+    left_join(sample_metadata, by = join_by(microsample == microsample)) %>% # Append sample metadata
+    left_join(quality, by = join_by(microsample == microsample)) %>% # Append quality data
+    mutate(section = unlist(section)) %>% # Flatten section if it's a list
+    filter(!is.na(count)) %>% # Filter out rows with NA in count
+    filter(count > 0) # Filter out rows with count <= 0
+  return(taxonomy_dataset)
+}
+```
+
+
+
+## Community composition barplots
+Function to generate plots based on taxonomy data and plot parameters. 
+You can also input whether you want to filter based on the quality of the microsample or its type. 
+E.g. filter_quality = 5, filter_type = c("Positive") or filter_type = c("NegativeMembrane", "NegativeCollection", "NegativeReaction").
+
+### Phylum level plot
+```{r phylum_taxonomy_barplot_function, warning=FALSE, comments="", message=FALSE}
+plot_taxonomy_data <- function(taxonomy_data, plot_params, filter_quality = NULL, filter_type = NULL) {
+  
+  # Apply filters based on plot_params
+  filtered_data <- taxonomy_data
+
+  # Dynamically apply filter conditions
+  if (length(plot_params$filter_conditions) > 0) {
+    filtered_data <- filtered_data %>% filter(!!!plot_params$filter_conditions)
+  }
+
+  # Dynamically apply the quality filter if provided
+  if (!is.null(filter_quality)) {
+    filtered_data <- filtered_data %>% filter(quality == filter_quality)
+  }
+  
+  # Dynamically apply the type filter (positive/negative) if provided
+  if (!is.null(filter_type)) {
+    filtered_data <- filtered_data %>% filter(type %in% filter_type)
+  }
+  
+    # Conditionally apply factor() for size based on the presence of 'size' in plot_params$fill_var
+  if (grepl("size", plot_params$fill_var)) {
+    filtered_data <- filtered_data %>%
+      mutate(size = factor(size, levels = c(500, 1500, 2500, 5000, 25000, 50000)))
+  }
+  
+  # Calculate total abundance for each phylum
+  phylum_order <- filtered_data %>%
+    group_by(phylum) %>%
+    summarise(total_abundance = sum(count, na.rm = TRUE), .groups = "drop") %>%
+    arrange(desc(total_abundance)) %>%
+    pull(phylum) # Extract the ordered phylum names
+
+  # Convert 'phylum' to a factor with levels ordered by abundance
+  filtered_data <- filtered_data %>%
+    mutate(phylum = factor(phylum, levels = phylum_order))
+
+  # Create an ordered factor for genus within each phylum by abundance
+  filtered_data <- filtered_data %>%
+    group_by(phylum, genus) %>%
+    summarise(genus_abundance = sum(count, na.rm = TRUE), .groups = "drop") %>%
+    arrange(phylum, desc(genus_abundance)) %>%
+    mutate(genus_order = factor(genus, levels = unique(genus))) %>%
+    select(phylum, genus, genus_order) %>%
+    right_join(filtered_data, by = c("phylum", "genus")) %>% # Rejoin to original filtered data
+    mutate(genus = genus_order) %>% # Apply ordered factor to genus
+    select(-genus_order)
+
+  # Calculate plot height dynamically based on number of microsamples included in this plot
+  # Group by microsample and count the occurrences
+  num_microsamples <- filtered_data %>%
+    count(microsample)
+  # print(nrow(num_microsamples))
+  plot_height <- 5 + (nrow(num_microsamples) * 0.2) #10 + (nrow(plot_data) * 0.01)
+
+  # Generate the plot
+  p <- ggplot(filtered_data, aes(x = count, y = microsample, fill = phylum, group = interaction(phylum, genus))) + # Group by multiple taxonomic levels
+    geom_bar(stat = "identity", colour = "white", linewidth = 0.1) + # Stacked bars with white borders
+    scale_fill_manual(values = phylum_colors[-4], drop = FALSE) + # Use manual color scale and ensure all phyla are represented
+    labs(
+      x = "Relative abundance",
+      y = "Microsamples",
+      fill = "Phylum",
+      title = plot_params$plot_title
+    ) +
+    facet_nested(as.formula(plot_params$facet_formula), scales = "free", space = "free") + # Dynamic faceting
+    guides(fill = guide_legend(ncol = 1)) +
+    custom_ggplot_theme 
+  return(list(plot = p, height = plot_height))
+}
+```
+
+### Genus level plot
+Function to generate shades for each genus within the same phylum
+```{r generate_shades_function, warning=FALSE, comments="", message=FALSE}
+generate_shades <- function(base_color, n) {
+  # Generate 'n' shades from the base color to a lighter version (not white)
+  colorRampPalette(colors = c(scales::muted(base_color, l = 30), base_color))(n)
+}
+```
+
+Function to generate plots based on taxonomy data and plot parameters. 
+```{r genus_taxonomy_barplot_function, warning=FALSE, comments="", message=FALSE}
+genus_plot_taxonomy_data <- function(taxonomy_data, plot_params, filter_quality = NULL, filter_type = NULL, top_n = 20) {
+  
+  # Apply filters based on plot_params
+  filtered_data <- taxonomy_data
+
+  # Dynamically apply filter conditions
+  if (length(plot_params$filter_conditions) > 0) {
+    filtered_data <- filtered_data %>% filter(!!!plot_params$filter_conditions)
+  }
+
+ # Dynamically apply the quality filter if provided
+  if (!is.null(filter_quality)) {
+    filtered_data <- filtered_data %>% filter(quality == filter_quality)
+  }
+  
+  # Dynamically apply the type filter (positive/negative) if provided
+  if (!is.null(filter_type)) {
+    filtered_data <- filtered_data %>% filter(type %in% filter_type)
+  }
+  
+    # Conditionally apply factor() for size based on the presence of 'size' in plot_params$fill_var
+  if (grepl("size", plot_params$fill_var)) {
+    filtered_data <- filtered_data %>%
+      mutate(size = factor(size, levels = c(500, 1500, 2500, 5000, 25000, 50000)))
+  }
+  
+  # Calculate total abundance for each phylum
+  phylum_order <- filtered_data %>%
+    group_by(phylum) %>%
+    summarise(total_abundance = sum(count, na.rm = TRUE), .groups = "drop") %>%
+    arrange(desc(total_abundance)) %>%
+    pull(phylum) # Extract the ordered phylum names
+
+  # Convert 'phylum' to a factor with levels ordered by abundance
+  filtered_data <- filtered_data %>%
+    mutate(phylum = factor(phylum, levels = phylum_order))
+
+  # Create an ordered factor for genus within each phylum by abundance
+  filtered_data <- filtered_data %>%
+    group_by(phylum, genus) %>%
+    summarise(genus_abundance = sum(count, na.rm = TRUE), .groups = "drop") %>%
+    arrange(phylum, desc(genus_abundance)) %>%
+    mutate(genus_order = factor(genus, levels = unique(genus))) %>%
+    select(phylum, genus, genus_order) %>%
+    right_join(filtered_data, by = c("phylum", "genus")) %>% # Rejoin to original filtered data
+    mutate(
+      genus_for_plot = genus_order, # Use the ordered factor for plotting
+      genus_label = as.character(genus)
+    ) %>% # Keep original genus names for labeling
+    select(-genus_order)
+  
+  
+  # Calculate plot height dynamically based on number of microsamples included in this plot
+  num_microsamples <- filtered_data %>%
+    count(microsample)
+  #print(nrow(num_microsamples))
+  plot_height <- 5 + (nrow(num_microsamples) * 0.2) 
+
+  # Calculate total abundance for each genus across all phyla
+  genus_abundance <- filtered_data %>%
+    group_by(genus) %>%
+    summarise(total_abundance = sum(count, na.rm = TRUE), .groups = "drop") %>%
+    arrange(desc(total_abundance))
+
+  # Get the top 'n' genera by overall abundance
+  top_genera <- genus_abundance %>%
+    slice_head(n = top_n) %>%
+    pull(genus)
+
+  filtered_data <- filtered_data %>%
+    mutate(
+      cleaned_genus = sub("^g__", "", genus),  # Remove g_ prefix from genus for display
+      cleaned_phylum = sub("^p__", "", phylum),  # Remove p_ prefix from phylum for display
+      genus_color = ifelse(genus %in% top_genera, as.character(phylum), "Other"), # Use original phylum for color mapping
+      genus_label = ifelse(genus %in% top_genera, paste(cleaned_genus, "(", cleaned_phylum, ")"), "Other") # Use cleaned genus and phylum for labeling
+    )
+  
+  # Reorder 'genus_label' factor by genus abundance, using cleaned phylum names for display
+filtered_data <- filtered_data %>%
+  mutate(genus_label = factor(
+    genus_label,
+    levels = c(paste(sub("^g__", "", top_genera), "(", sub("^p__", "", filtered_data$phylum[match(top_genera, filtered_data$genus)]), ")"), "Other")
+  ))
+
+  # Prepare the phylum colors
+  phylum_colors_named <- phylum_colors #[-4]
+  names(phylum_colors_named) <- levels(filtered_data$phylum)
+
+  # Generate color mapping for each genus within its phylum
+  color_mapping <- c()
+  for (phylum in unique(filtered_data$phylum)) {
+    phylum_data <- filtered_data %>%
+      filter(phylum == !!phylum & genus_label != "Other") %>%
+      distinct(genus_label)
+
+    n_genera <- nrow(phylum_data)
+    phylum_color <- phylum_colors_named[phylum]
+
+    if (n_genera > 0) {
+      # Generate shades for each genus
+      phylum_shades <- generate_shades(phylum_color, n_genera)
+      names(phylum_shades) <- phylum_data$genus_label
+      color_mapping <- c(color_mapping, phylum_shades)
+    }
+  }
+
+  # Add grey color for 'Other' category
+  color_mapping["Other"] <- "grey"
+
+  # Generate the plot
+  p <- ggplot(filtered_data, aes(x = count, y = microsample, fill = genus_label, group = interaction(phylum, genus_for_plot))) +
+    geom_bar(stat = "identity", colour = "white", linewidth = 0.05) + # Stacked bars with white borders
+    scale_fill_manual(values = color_mapping, drop = FALSE) + # Use manual color scale
+    labs(
+      x = "Bacterial composition",
+      y = "Microsamples",
+      fill = "Genus (Phylum)",
+      title = plot_params$plot_title
+    ) +
+    facet_nested(as.formula(plot_params$facet_formula), scales = "free", space = "free") + # Dynamic faceting
+    guides(fill = guide_legend(ncol = 1)) +
+    custom_ggplot_theme
+  return(list(plot = p, height = plot_height))
+}
+```
+
+
+
+### Composition plotting function
+To plot figures for all the experiments.
+Parameters for each experiment set in the previous chapter.
+```{r plot_taxonomy_barplot_function, warning=FALSE, comments="", message=FALSE}
+generate_and_save_plots <- function(taxonomy_dataset, plot_base_name, plot_params_list, plot_function, filter_quality = NULL, filter_type = NULL) {
+  
+  # Initialize a list to store the plots
+  plots_list <- list()
+  
+  # Loop through each set of plot parameters and generate plots
+  for (param_name in names(plot_params_list)) {
+    plot_params <- plot_params_list[[param_name]]
+    
+    # Call the plotting function dynamically
+    result <- plot_function(
+      taxonomy_data = taxonomy_dataset,
+      plot_params = plot_params,
+      filter_quality = filter_quality,  # Pass quality filter
+      filter_type = filter_type         # Pass type filter
+    )
+    
+    # Extract the plot and the dynamic height
+    plot <- result$plot
+    plot_height <- result$height
+    
+    # Store the plot in the list
+    plots_list[[param_name]] <- plot
+    
+    # Print the plot
+    print(plot)
+    
+    # Save the plot as an image file
+    ggsave(
+      filename = paste0("results/figures/taxonomy/", plot_base_name, param_name, ".jpg"),
+      plot = plot,
+      device = "jpg",
+      width = 30,
+      height = plot_height, 
+      units = "cm", 
+      dpi = 300, 
+      limitsize = FALSE
+    )
+  }
+  # Return the list of plots
+  return(plots_list)
+}
+```
+
+
+
+### Generate taxonomy datasets
+
+Filtered data (30% coverage).
+```{r generate_taxonomy_filtered, warning=FALSE, comments="", message=FALSE}
+taxonomy_dataset_filt <- prepare_taxonomy_dataset(
+  genome_counts_df = genome_counts_filt, 
+  genome_metadata = genome_metadata, 
+  sample_metadata = sample_metadata, 
+  quality = quality
+  )
+
+#print(taxonomy_dataset_filt)
+```
+
+Unfiltered data.
+```{r generate_taxonomy_unfiltered, warning=FALSE, comments="", message=FALSE}
+taxonomy_dataset_unfilt <- prepare_taxonomy_dataset(
+  genome_counts_df = genome_counts, 
+  genome_metadata = genome_metadata, 
+  sample_metadata = sample_metadata, 
+  quality = quality
+  )
+
+#print(taxonomy_dataset_unfilt)
+```
+
+
+### Generate plots 
+
+Filtered data, phylum level.
+```{r plot_taxonomy_filtered_phyla, fig.height=7, fig.width=12, fig.fullwidth=TRUE}
+plots <- generate_and_save_plots(
+  taxonomy_dataset = taxonomy_dataset_filt, 
+  plot_base_name = "tax_filt_phyla_", 
+  plot_params_list = plot_params_list, 
+  plot_function = plot_taxonomy_data,
+  filter_quality = 5, 
+  filter_type = c("Positive")
+  )
+```
+Filtered data, genus level.
+```{r plot_taxonomy_filtered_genera, fig.height=7, fig.width=12, fig.fullwidth=TRUE}
+plots <- generate_and_save_plots(
+  taxonomy_dataset = taxonomy_dataset_filt, 
+  plot_base_name = "tax_filt_genus_", 
+  plot_params_list = plot_params_list, 
+  plot_function = genus_plot_taxonomy_data,
+  filter_quality = 5, 
+  filter_type = c("Positive")
+  )
+```
+
+Unfiltered data, phylum level.
+```{r plot_taxonomy_unfiltered_phyla, fig.height=7, fig.width=12, fig.fullwidth=TRUE}
+plots <- generate_and_save_plots(
+  taxonomy_dataset = taxonomy_dataset_unfilt, 
+  plot_base_name = "tax_unfilt_phyla_", 
+  plot_params_list = plot_params_list, 
+  plot_function = plot_taxonomy_data,
+  filter_quality = NULL, 
+  filter_type = NULL
+  )
+```
+
+Unfiltered data, genus level.
+```{r plot_taxonomy_unfiltered_genera, fig.height=7, fig.width=12, fig.fullwidth=TRUE}
+plots <- generate_and_save_plots(
+  taxonomy_dataset = taxonomy_dataset_unfilt, 
+  plot_base_name = "tax_unfilt_genus_", 
+  plot_params_list = plot_params_list, 
+  plot_function = genus_plot_taxonomy_data,
+  filter_quality = NULL, 
+  filter_type = NULL
+  )
+```
+
+
+## Phylogeny & MAG heatmap visualisation
+
+### Define MAG overview plotting fuction
+
+Visualise a phylogenetic tree from the already made 'genome_tree' (bioinformatics pipeline).
+Colour the tips (genomes) by phylum.
+```{r create_tree, warning=FALSE, comments="", message=FALSE}
+vertical_tree <- force.ultrametric(genome_tree, method = "extend") %>%
+  ggtree(., size = 0.3)
+
+phylum_colors_2 <- read_tsv("https://raw.githubusercontent.com/earthhologenome/EHI_taxonomy_colour/main/ehi_phylum_colors.tsv", show_col_types = FALSE) %>%
+  right_join(genome_metadata, by = join_by(phylum == phylum)) %>%
+  arrange(match(genome, genome_tree$tip.label)) %>%
+  mutate(phylum = factor(phylum, levels = unique(phylum))) %>%
+  column_to_rownames(var = "genome") %>%
+  select(phylum)
+
+colors_alphabetic <- read_tsv("https://raw.githubusercontent.com/earthhologenome/EHI_taxonomy_colour/main/ehi_phylum_colors.tsv", show_col_types = FALSE) %>%
+  right_join(genome_metadata, by = join_by(phylum == phylum)) %>%
+  arrange(match(genome, genome_tree$tip.label)) %>%
+  select(phylum, colors) %>%
+  unique() %>%
+  arrange(phylum) %>%
+  select(colors) %>%
+  pull()
+
+vertical_tree <- gheatmap(vertical_tree, phylum_colors_2, offset = -0.3, width = 0.1, colnames = FALSE) +
+  scale_fill_manual(values = colors_alphabetic) +
+  new_scale_fill()
+```
+Plot a heatmap next to the already created tree.
+NB!Here we do not filter for genomes that are 0 or NA across all samples in the current dataset, as the number of tips on the tree is set. 
+NB! Faceting does not work with gheatmap. We need to order the samples in a way that makes sence in the heatmap.
+NB! We get two 'value' scalebars - need to remove one.
+```{r heatmap_function, warning=FALSE, comments="", message=FALSE}
+plot_tree_heaatmap <- function(counts, plot_base_name, plot_params_list, filter_type = NULL) {
+  
+  # Initialize a list to store the plots
+  plots_list <- list()
+  
+  # Loop through each set of plot parameters and generate plots
+  for (param_name in names(plot_params_list)) {
+    plot_params <- plot_params_list[[param_name]]
+
+  
+    # Apply filters based on plot_params
+    sample_selection <- sample_metadata
+  
+    # Dynamically apply filter conditions
+    if (length(plot_params$filter_conditions) > 0) {
+      sample_selection <- sample_selection %>% filter(!!!plot_params$filter_conditions)
+    }
+  
+    # Dynamically apply the type filter (positive/negative) if provided
+    if (!is.null(filter_type)) {
+      sample_selection <- sample_selection %>% filter(type %in% filter_type)
+    }
+  
+    valid_samples <- intersect(sample_selection$microsample, colnames(counts))
+    genome_counts_selected <- counts %>%
+      select(all_of(c("genome", valid_samples))) %>%
+      column_to_rownames(var = "genome") %>%
+      tss()
+  
+    vertical_tree_output <- gheatmap(vertical_tree, genome_counts_selected, 
+                                     offset = -0.1, width = 0.7, colnames = TRUE, 
+                                     colnames_angle = 90, font.size = 0.2, 
+                                     colnames_position = "top", colnames_offset_y = 5) +
+      vexpand(.08) +
+      coord_cartesian(clip = "off") +
+      scale_fill_gradient(low = "#f4f4f4", high = "#315b7d", na.value = "white") +
+      labs(x = 'relative_abundance', 
+                title = plot_params$plot_title
+      ) 
+    
+    # Store the plot in the list
+    plots_list[[param_name]] <- vertical_tree_output
+    
+    # Print the plot
+    print(vertical_tree_output)
+    
+    # Save the plot as an image file
+    ggsave(
+      filename = paste0("results/figures/tree_heatmaps/", plot_base_name, param_name, ".jpg"),
+      plot = vertical_tree_output,
+      device = "jpg",
+      width = 30,
+      height = 30, 
+      units = "cm", 
+      dpi = 300, 
+      limitsize = FALSE
+    )
+  }
+  # Return the list of plots
+  return(plots_list)
+}   
+```
+
+### Generate MAG tree & relative abundance plots
+
+Filtered data, only positive samples.
+```{r heatmap_filtered_positive, fig.height=7, fig.width=12, fig.fullwidth=TRUE}
+plots <- plot_tree_heaatmap(
+  counts = genome_counts_filt, 
+  plot_base_name = "tree_heatmap_filt_positive_", 
+  plot_params_list = plot_params_list, 
+  filter_type = c("Positive")
+  )
+```
+
+Unfiltered data, only positive samples.
+```{r heatmap_unfiltered_positive, fig.height=7, fig.width=12, fig.fullwidth=TRUE}
+plots <- plot_tree_heaatmap(
+  counts = genome_counts, 
+  plot_base_name = "tree_heatmap_unfilt_positive_", 
+  plot_params_list = plot_params_list, 
+  filter_type = c("Positive")
+  )
+```
+
+Unfiltered data, only negative samples.
+```{r heatmap_unfiltered_negative, fig.height=7, fig.width=12, fig.fullwidth=TRUE}
+plots <- plot_tree_heaatmap(
+  counts = genome_counts,
+  plot_base_name = "tree_heatmap_unfilt_negative_",
+  plot_params_list = plot_params_list[1:7], # 1:7 because the rest do not include negatives
+  filter_type = c("NegativeMembrane", "NegativeCollection", "NegativeReaction")
+  )
+```
+
+
+## Composition jitterplot functions
+
+```{r jitterplot_function, warning=FALSE, comments="", message=FALSE}
+plot_jitterplot <- function(taxonomy_data, plot_base_name, plot_params_list, taxon_level, filter_type = NULL) {
+
+    # Initialize a list to store the plots
+  plots_list <- list()
+  
+  # Loop through each set of plot parameters and generate plots
+  for (param_name in names(plot_params_list)) {
+    plot_params <- plot_params_list[[param_name]]
+
+  
+      # Apply filters based on plot_params
+    filtered_data <- taxonomy_data
+  
+    # Dynamically apply filter conditions1
+    if (length(plot_params$filter_conditions) > 0) {
+      filtered_data <- filtered_data %>% filter(!!!plot_params$filter_conditions)
+    }
+  
+    # Dynamically apply the type filter (positive/negative) if provided
+    if (!is.null(filter_type)) {
+      filtered_data <- filtered_data %>% filter(type %in% filter_type)
+    }
+    
+      # Conditionally apply factor() for size based on the presence of 'size' in plot_params$fill_var
+    if (grepl("size", plot_params$fill_var)) {
+      filtered_data <- filtered_data %>%
+        mutate(size = factor(size, levels = c(500, 1500, 2500, 5000, 25000, 50000)))
+    }
+    
+    # Apply special processing if taxon_level is genus
+    if (taxon_level == "genus") {
+      filtered_data <- filtered_data %>%
+        filter(genus != "g__") %>%                       # Filter out "g__" genus
+        mutate(genus = sub("^g__", "", genus))           # Remove the "g__" prefix
+    }
+    
+    summary <- filtered_data %>%
+      group_by(!!sym(taxon_level)) %>%
+      summarise(mean = geometric.mean(count, na.rm = T)) %>% #geometric mean because it is a %
+      arrange(-mean)
+    
+    
+    plot_data <- filtered_data %>%
+      mutate(!!sym(taxon_level) := factor(!!sym(taxon_level), levels = rev(summary %>% pull(!!sym(taxon_level)))))
+    
+    
+    new_facet_formula <- gsub("(.*) ~ (.*)", "\\2 ~ \\1", plot_params$facet_formula)
+  
+    plot <- plot_data %>%
+      ggplot(aes(x = count, y = !!sym(taxon_level), group = !!sym(taxon_level), color = phylum)) +
+        scale_color_manual(values = phylum_colors) +
+        geom_jitter(alpha = 0.3, size=0.5) +
+        facet_nested(as.formula(new_facet_formula)) +
+        theme_minimal() +
+        labs(y = "Family", 
+             x = "Relative abundance", 
+             color = "Phylum",
+             title = plot_params$plot_title)+
+        custom_ggplot_theme
+
+    # Store the plot in the list
+    plots_list[[param_name]] <- plot
+    
+    # Print the plot
+    print(plot)
+    
+    # Save the plot as an image file
+    ggsave(
+      filename = paste0("results/figures/composition_jitterplots/", plot_base_name, param_name, ".jpg"),
+      plot = plot,
+      device = "jpg",
+      width = 30,
+      height = 30, 
+      units = "cm", 
+      dpi = 300, 
+      limitsize = FALSE
+    )
+  }
+  # Return the list of plots
+  return(plots_list)
+}
+```
+
+
+Coverage filtered, positive samples, genome level
+```{r jitterplot_filtered_positive_genome, fig.height=7, fig.width=12, fig.fullwidth=TRUE}
+plots <- plot_jitterplot(
+  taxonomy_data = taxonomy_dataset_filt, 
+  plot_base_name = "jitterplot_filt_genome_positive_", 
+  plot_params_list = plot_params_list,
+  taxon_level = 'genome',
+  filter_type = c("Positive")
+  )
+```
+Coverage filtered, positive samples, genus level
+```{r jitterplot_filtered_positive_genus, fig.height=7, fig.width=12, fig.fullwidth=TRUE}
+plots <- plot_jitterplot(
+  taxonomy_data = taxonomy_dataset_filt, 
+  plot_base_name = "jitterplot_filt_genus_positive_", 
+  plot_params_list = plot_params_list,
+  taxon_level = 'genus',
+  filter_type = c("Positive")
+  )
+```
+Not-filtered, positive samples, genome level
+```{r jitterplot_unfiltered_positive_genome, fig.height=7, fig.width=12, fig.fullwidth=TRUE}
+plots <- plot_jitterplot(
+  taxonomy_data = taxonomy_dataset_unfilt, 
+  plot_base_name = "jitterplot_unfilt_genome_positive_", 
+  plot_params_list = plot_params_list,
+  taxon_level = 'genome',
+  filter_type = c("Positive")
+  )
+```
+
+Not-filtered, positive samples, genus level
+```{r jitterplot_unfiltered_positive_genus, fig.height=7, fig.width=12, fig.fullwidth=TRUE}
+plots <- plot_jitterplot(
+  taxonomy_data = taxonomy_dataset_unfilt, 
+  plot_base_name = "jitterplot_unfilt_genus_positive_", 
+  plot_params_list = plot_params_list,
+  taxon_level = 'genus',
+  filter_type = c("Positive")
+  )
+```
+
+Not-filtered, negative controls, genome level
+```{r jitterplot_unfiltered_negative_genome, fig.height=7, fig.width=12, fig.fullwidth=TRUE}
+plots <- plot_jitterplot(
+  taxonomy_data = taxonomy_dataset_unfilt, 
+  plot_base_name = "jitterplot_unfilt_genome_negative_", 
+  plot_params_list = plot_params_list[1:7], # 1:7 because the rest do not include negatives
+  taxon_level = 'genome',
+  filter_type = c("NegativeMembrane", "NegativeCollection", "NegativeReaction")
+  )
+```
+
+Not-filtered, negative controls, genus level
+```{r jitterplot_unfiltered_negative_genus, fig.height=7, fig.width=12, fig.fullwidth=TRUE}
+plots <- plot_jitterplot(
+  taxonomy_data = taxonomy_dataset_unfilt, 
+  plot_base_name = "jitterplot_unfilt_genus_negative_", 
+  plot_params_list = plot_params_list[1:7], # 1:7 because the rest do not include negatives
+  taxon_level = 'genus',
+  filter_type = c("NegativeMembrane", "NegativeCollection", "NegativeReaction")
+  )
+```
+
+
+## Covariance
+NB! This is not compositional and must be checked with compositional math too.
+
+```{r genus_correlations, warning=FALSE, comments="", message=FALSE}
+taxon_level <- "genus"
+
+taxon_list <- c("g__Lactobacillus", "g__Escherichia", "g__Streptococcus", "g__Eisenbergiella", "g__Mediterraneibacter", "g__Caccovicinus")
+
+genus_summary <- genome_counts_filt %>%
+  mutate_at(vars(-genome), ~ . / sum(.)) %>% # apply TSS nornalisation
+  pivot_longer(-genome, names_to = "microsample", values_to = "count") %>% # reduce to minimum number of columns
+  left_join(sample_metadata, by = join_by(microsample == microsample)) %>% # append sample metadata
+  left_join(quality, by = join_by(microsample == microsample)) %>%
+  filter(quality >= 5) %>%
+  left_join(., genome_metadata, by = join_by(genome == genome)) %>% # append genome metadata
+  group_by(microsample, cryosection, !!sym(taxon_level)) %>%
+  summarise(relabun = sum(count))
+```
+
+```{r genus_correlations_plot, warning=FALSE, comments="", message=FALSE, fig.height=8, fig.width=10, fig.fullwidth=TRUE}
+genus_summary %>%
+  mutate(individual = substr(cryosection, 1, 4)) %>%
+  filter(genus %in% c("g__Caccovicinus", "g__Streptococcus")) %>%
+  pivot_wider(names_from = genus, values_from = relabun) %>%
+  ggplot(aes(x = g__Caccovicinus, y = g__Streptococcus)) +
+  geom_point() +
+  geom_smooth(method = lm, color = "red", fill = "#69b3a2", se = TRUE) +
+  facet_grid(~individual) +
+  theme_minimal()
+
+genus_summary %>%
+  mutate(individual = substr(cryosection, 1, 4)) %>%
+  filter(genus %in% c("g__Lactobacillus", "g__Streptococcus")) %>%
+  pivot_wider(names_from = genus, values_from = relabun) %>%
+  ggplot(aes(x = g__Lactobacillus, y = g__Streptococcus)) +
+  geom_point() +
+  geom_smooth(method = lm, color = "red", fill = "#69b3a2", se = TRUE) +
+  facet_grid(~individual) +
+  theme_minimal()
+
+genus_summary %>%
+  mutate(individual = substr(cryosection, 1, 4)) %>%
+  filter(genus %in% c("g__Lactobacillus", "g__Mediterraneibacter")) %>%
+  pivot_wider(names_from = genus, values_from = relabun) %>%
+  ggplot(aes(x = g__Mediterraneibacter, y = g__Lactobacillus)) +
+  geom_point() +
+  geom_smooth(method = lm, color = "red", fill = "#69b3a2", se = TRUE) +
+  facet_grid(~individual) +
+  theme_minimal()
+
+genus_summary %>%
+  mutate(individual = substr(cryosection, 1, 4)) %>%
+  filter(genus %in% c("g__Streptococcus", "g__Mediterraneibacter")) %>%
+  pivot_wider(names_from = genus, values_from = relabun) %>%
+  ggplot(aes(x = g__Streptococcus, y = g__Mediterraneibacter)) +
+  geom_point() +
+  geom_smooth(method = lm, color = "red", fill = "#69b3a2", se = TRUE) +
+  facet_grid(~individual) +
+  theme_minimal()
+
+genus_summary %>%
+  mutate(individual = substr(cryosection, 1, 4)) %>%
+  filter(genus %in% c("g__Lactobacillus", "g__Caccovicinus")) %>%
+  pivot_wider(names_from = genus, values_from = relabun) %>%
+  ggplot(aes(x = g__Caccovicinus, y = g__Lactobacillus)) +
+  geom_point() +
+  geom_smooth(method = lm, color = "red", fill = "#69b3a2", se = TRUE) +
+  facet_grid(~individual) +
+  theme_minimal()
+
+genus_summary %>%
+  mutate(individual = substr(cryosection, 1, 4)) %>%
+  filter(genus %in% c("g__Lactobacillus", "g__Escherichia")) %>%
+  pivot_wider(names_from = genus, values_from = relabun) %>%
+  ggplot(aes(x = g__Escherichia, y = g__Lactobacillus)) +
+  geom_point() +
+  geom_smooth(method = lm, color = "red", fill = "#69b3a2", se = TRUE) +
+  facet_grid(~individual) +
+  theme_minimal()
+
+genus_summary %>%
+  mutate(individual = substr(cryosection, 1, 4)) %>%
+  filter(genus %in% c("g__Streptococcus", "g__Caccovicinus")) %>%
+  pivot_wider(names_from = genus, values_from = relabun) %>%
+  ggplot(aes(x = g__Streptococcus, y = g__Caccovicinus)) +
+  geom_point() +
+  geom_smooth(method = lm, color = "red", fill = "#69b3a2", se = TRUE) +
+  facet_grid(~individual) +
+  theme_minimal()
+```
+
+<!--chapter:end:3-community_composition.Rmd-->
+
+# Alpha diversity
+
+## Load data 
+Load the data produced in the 2nd chapter
+```{r load_data_alpha, warning=FALSE, comments="", message=FALSE}
+load("data/data.Rdata")
+quality <- read_tsv("results/final_combined_stats.tsv",
+  col_types = cols_only(microsample = col_character(), quality = col_double()),
+  show_col_types = FALSE
+)
+```
+
+Define function to estimate alpha diversity measurements.
+```{r alpha_diversity_function, warning=FALSE, comments="", message=FALSE}
+calculate_alpha_diversity <- function(input_data, dataset_name) {
+  # Step 1: Transform the input data (remove rownames if needed)
+  input_data_matrix <- input_data %>%
+    column_to_rownames(var = "genome")
+
+  # Step 2: Calculate richness (q = 0)
+  richness <- hilldiv(input_data_matrix, q = 0) %>%
+    t() %>%
+    as.data.frame() %>%
+    rename(richness = 1) %>%
+    rownames_to_column(var = "microsample")
+
+  # Step 3: Calculate neutral diversity (q = 1)
+  neutral <- hilldiv(input_data_matrix, q = 1) %>%
+    t() %>%
+    as.data.frame() %>%
+    rename(neutral = 1) %>%
+    rownames_to_column(var = "microsample")
+
+  # Step 4: Calculate phylogenetic diversity (q = 1, with genome tree)
+  phylogenetic <- hilldiv(input_data_matrix, q = 1, tree = genome_tree) %>%
+    t() %>%
+    as.data.frame() %>%
+    rename(phylogenetic = 1) %>%
+    rownames_to_column(var = "microsample")
+
+  # Step 5: Merge all diversity metrics
+  alpha_diversity <- richness %>%
+    full_join(neutral, by = "microsample") %>%
+    full_join(phylogenetic, by = "microsample") %>%
+    left_join(sample_metadata, by = "microsample")
+
+  # Step 6: Define the output file name based on the dataset name
+  output_filename <- paste0("results/alpha_div_", dataset_name, ".tsv")
+
+  # Step 7: Write the result to a tsv file
+  alpha_diversity %>% write_tsv(output_filename)
+
+  # Return the alpha_diversity data frame
+  return(alpha_diversity)
+}
+```
+
+Estimate the alpha diversity on the unfiltered and the coverage-filtered counts
+```{r alpha_diversities_filtered, warning=FALSE, comments="", message=FALSE}
+# Calculate alpha diversity for filtered genome counts data
+alpha_div_filtered <- calculate_alpha_diversity(
+  input_data = genome_counts_filt,
+  dataset_name = "filtered"
+)
+``` 
+
+```{r alpha_diversities_unfiltered, warning=FALSE, comments="", message=FALSE}
+# Calculate alpha diversity for unfiltered genome counts data
+alpha_div_unfiltered <- calculate_alpha_diversity(
+  input_data = genome_counts,
+  dataset_name = "unfiltered"
+)
+```
+
+
+```{r alpha_diversities_plot_function, warning=FALSE, comments="", message=FALSE}
+plot_alpha_diversity <- function(alpha_div_dataset, plot_base_name, plot_params_list, filter_type = NULL) {
+  # Initialize a list to store the plots
+  plots_list <- list()
+
+  # Loop through each set of plot parameters and generate plots
+  for (param_name in names(plot_params_list)) {
+    plot_params <- plot_params_list[[param_name]]
+
+    # Apply filters based on plot_params and filter_type if provided
+    filtered_data <- alpha_div_dataset
+
+    # Dynamically apply filter conditions1
+    if (length(plot_params$filter_conditions) > 0) {
+      filtered_data <- filtered_data %>% filter(!!!plot_params$filter_conditions)
+    }
+
+    # Dynamically apply the type filter (positive/negative) if provided
+    if (!is.null(filter_type)) {
+      filtered_data <- filtered_data %>% filter(type %in% filter_type)
+    }
+
+    # Conditionally apply factor() for size based on the presence of 'size' in plot_params$fill_var
+    if (grepl("size", plot_params$fill_var)) {
+      filtered_data <- filtered_data %>%
+        mutate(size = factor(size, levels = c(500, 1500, 2500, 5000, 25000, 50000)))
+    }
+
+    # Pivot the relevant columns for diversity metrics
+    filtered_data <- filtered_data %>%
+      pivot_longer(
+        cols = c(richness, neutral, phylogenetic),
+        names_to = "metric",
+        values_to = "value"
+      ) %>%
+      left_join(quality, by = join_by(microsample == microsample)) %>%
+      mutate(metric = factor(metric, levels = c("richness", "neutral", "phylogenetic"))) %>%
+      filter(!is.na(value)) # Filter out rows with NA values in the value column
+
+    new_facet_formula <- gsub("(.*) ~ \\.", "metric ~ \\1", plot_params$facet_formula)
+
+    # Create the plot
+    plot <- ggplot(filtered_data, aes(x = plot_params$fill_var, y = value, color = quality)) +
+      scale_color_gradient(low = "#c90076", high = "#3598bf", name = "Quality", limits = c(0, 5)) +
+      geom_boxplot(outlier.shape = NA) +
+      geom_jitter(width = 0.2) +
+      facet_nested(as.formula(new_facet_formula), scales = "free", space = "fixed") +
+      theme_minimal() +
+      custom_ggplot_theme +
+      labs(
+        title = plot_params$plot_title,
+        x = stat_params$fill_var
+      )
+
+    # Store the plot in the list
+    plots_list[[param_name]] <- plot
+
+    # Print the plot
+    print(plot)
+
+    # Save the plot as an image file
+    ggsave(
+      filename = paste0("results/figures/alpha_diversity_plots/", plot_base_name, param_name, ".jpg"),
+      plot = plot,
+      device = "jpg",
+      width = 30,
+      height = 30,
+      units = "cm",
+      dpi = 300,
+      limitsize = FALSE
+    )
+  }
+
+  # Return the list of plots
+  return(plots_list)
+}
+```
+
+Coverage-filtered data, positive samples
+```{r alpha_div_filt_pos, warning=FALSE, comments="", message=FALSE, fig.height=8, fig.width=10, fig.fullwidth=TRUE}
+alpha_div_plots <- plot_alpha_diversity(
+  alpha_div_dataset = alpha_div_filtered,
+  plot_base_name = "alpha_div_filt_pos_",
+  plot_params_list = plot_params_list,
+  filter_type = c("Positive")
+)
+```
+
+Coverage-filtered data, all samples
+```{r alpha_div_filt_all, warning=FALSE, comments="", message=FALSE, fig.height=8, fig.width=10, fig.fullwidth=TRUE}
+alpha_div_plots <- plot_alpha_diversity(
+  alpha_div_dataset = alpha_div_filtered,
+  plot_base_name = "alpha_div_filt_all_",
+  plot_params_list = plot_params_list,
+  filter_type = NULL
+)
+```
+
+Unfiltered data, positive samples
+```{r alpha_div_unfilt_pos, warning=FALSE, comments="", message=FALSE, fig.height=8, fig.width=10, fig.fullwidth=TRUE}
+alpha_div_plots <- plot_alpha_diversity(
+  alpha_div_dataset = alpha_div_unfiltered,
+  plot_base_name = "alpha_div_unfilt_pos_",
+  plot_params_list = plot_params_list,
+  filter_type = c("Positive")
+)
+```
+
+Unfiltered data, all samples
+```{r alpha_div_unfilt_all, warning=FALSE, comments="", message=FALSE, fig.height=8, fig.width=10, fig.fullwidth=TRUE}
+alpha_div_plots <- plot_alpha_diversity(
+  alpha_div_dataset = alpha_div_unfiltered,
+  plot_base_name = "alpha_div_unfilt_all_",
+  plot_params_list = plot_params_list,
+  filter_type = NULL
+)
+```
+
+<!--chapter:end:4_alpha_diversity.Rmd-->
+
+# Beta diversity
+
+```{r load_data_beta}
+load("data/data.Rdata")
+quality <- read_tsv("results/final_combined_stats.tsv",
+  col_types = cols_only(microsample = col_character(), quality = col_double()),
+  show_col_types = FALSE
+)
+```
+
+## NMDS plots
+
+```{r beta_diversities, warning=FALSE, comments="", message=FALSE, eval=FALSE}
+# selected_samples <- sample_metadata %>%
+#   filter(section != "Ileum") %>%
+#   filter(section != "Colon") %>%
+#   filter(batch == "MSEB0011"|batch == "MSEB0012") %>%
+#   filter(type == "Positive") %>%
+#   filter(microsample %in% colnames(genome_counts_filt)) %>%
+#   filter(!is.na(Xcoord)) %>% 
+#   select(microsample) %>% pull()
+# 
+# #Calculate Hill numbers
+# richness_caecum <- genome_counts_filt %>%
+#             column_to_rownames(var="genome") %>%
+#             select(all_of(selected_samples)) %>%
+#             select(where(~!all(. == 0))) %>%
+#             hillpair(.,q=0, metric="C", out="pair")
+# 
+# neutral_caecum <- genome_counts_filt %>%
+#             column_to_rownames(var="genome") %>%
+#             select(all_of(selected_samples)) %>%
+#             select(where(~!all(. == 0))) %>%
+#             hillpair(.,q=1, metric="C", out="pair")
+# 
+# phylogenetic_caecum <- genome_counts_filt %>%
+#             column_to_rownames(var="genome") %>%
+#             select(all_of(selected_samples)) %>%
+#             select(where(~!all(. == 0))) %>%
+#             hillpair(.,q=1, tree=genome_tree, metric="C", out="pair")
+# 
+# # Merge beta diversities
+# beta_diversity <- richness_caecum %>%
+#       full_join(neutral_caecum,by=c("first", "second")) %>%
+#       full_join(phylogenetic_caecum,by=c("first", "second")) %>%
+#       rename(richness=C.x, neutral=C.y, phylogenetic=C)
+# 
+# # Write alpha diversities
+# beta_diversity %>% write_tsv("results/beta_div.tsv")
+```
+
+```{r beta_diversities_caecum_plot, fig.height=8, fig.width=10, fig.fullwidth=TRUE, eval=FALSE}
+# beta_diversity <- read_tsv("results/beta_div.tsv")
+# 
+# # # Select high-quality samples
+# # caecum_samples_hq <- sample_metadata %>%
+# #   left_join(quality,by=join_by(microsample==microsample)) %>%
+# #   filter(quality >= 5) %>%
+# #   filter(!is.na(Xcoord)) %>%
+# #   select(microsample) %>%
+# #   pull()
+# 
+# caecum_samples_hq <- sample_metadata %>%
+#   filter(section != "Ileum") %>%
+#   filter(section != "Colon") %>%
+#   filter(batch == "MSEB0011"|batch == "MSEB0012") %>%
+#   filter(type == "Positive") %>%
+#   filter(!is.na(Xcoord)) %>% 
+#   select(microsample) %>% 
+#   pull()
+```
+
+Adult vs young animal
+```{r beta_diversities_animals, warning=FALSE, comments="", message=FALSE, fig.height=7, fig.width=12, fig.fullwidth=TRUE}
+selected_samples <- sample_metadata %>%
+  filter(section != "Ileum") %>%
+  filter(section != "Colon") %>%
+  filter(batch == "MSEB0011"|batch == "MSEB0012") %>%
+  filter(type == "Positive") %>%
+  filter(microsample %in% colnames(genome_counts_filt)) %>%
+  filter(!is.na(Xcoord)) %>% 
+  select(microsample) %>% pull()
+
+samples_nmds <- genome_counts_filt %>%
+            column_to_rownames(var="genome") %>%
+            select(all_of(selected_samples)) %>%
+            select(where(~!all(. == 0))) %>%
+            hillpair(.,q=1, metric="C", out="dist") %>%
+            metaMDS(.,trymax = 999, k=2, trace=0) %>%
+            vegan::scores() %>%
+            as_tibble(., rownames = "microsample") %>%
+            left_join(sample_metadata, by = join_by(microsample == microsample)) %>%
+            group_by(cryosection) %>%
+            mutate(microsample_x=mean(NMDS1), microsample_y=mean(NMDS2))
+
+plot1 <- samples_nmds %>%
+            ggplot(aes(x=NMDS1,y=NMDS2, color=animal)) +
+                geom_point(size=2) +
+                geom_segment(aes(x=microsample_x, y=microsample_y, xend=NMDS1, yend=NMDS2), alpha=0.2) +
+                scale_color_manual(values=c('#ffc273','#c1558b')) + #"#a3d1cf","#d1a3cf",
+                theme_classic() +
+                theme(legend.position="right", legend.box="vertical") +
+                guides(color=guide_legend(title="Animal"))
+
+print(plot1)
+```
+Ceacum vs colon (of adult)
+
+```{r beta_diversities_sections, warning=FALSE, comments="", message=FALSE, fig.height=7, fig.width=12, fig.fullwidth=TRUE}
+selected_samples <- sample_metadata %>%
+  filter(section != "Ileum") %>%
+  filter(animal == 'G121e') %>%
+  filter(cycles<16) %>%
+  filter(batch == "MSEB0009"|batch == "MSEB0010"|batch == "MSEB0011"|batch == "MSEB0012") %>%
+  filter(type == "Positive") %>%
+  filter(microsample %in% colnames(genome_counts_filt)) %>%
+  filter(!is.na(Xcoord)) %>% 
+  select(microsample) %>% pull()
+
+samples_nmds <- genome_counts_filt %>%
+            column_to_rownames(var="genome") %>%
+            select(all_of(selected_samples)) %>%
+            select(where(~!all(. == 0))) %>%
+            hillpair(.,q=1, metric="C", out="dist") %>%
+            metaMDS(.,trymax = 999, k=2, trace=0) %>%
+            vegan::scores() %>%
+            as_tibble(., rownames = "microsample") %>%
+            left_join(sample_metadata, by = join_by(microsample == microsample)) %>%
+            group_by(cryosection) %>%
+            mutate(microsample_x=mean(NMDS1), microsample_y=mean(NMDS2))
+
+plot2 <- samples_nmds %>%
+            ggplot(aes(x=NMDS1,y=NMDS2, color=section)) +
+                geom_point(size=2) +
+                geom_segment(aes(x=microsample_x, y=microsample_y, xend=NMDS1, yend=NMDS2), alpha=0.2) +
+                scale_color_manual(values=c('#8a49a1','#4f5bd5')) + #"#a3d1cf","#d1a3cf",
+                theme_classic() +
+                theme(legend.position="right", legend.box="vertical") +
+                guides(color=guide_legend(title="Section"))
+print(plot2)
+```
+
+
+Different LMD sizes
+```{r beta_diversities_sizes, warning=FALSE, comments="", message=FALSE, fig.height=7, fig.width=12, fig.fullwidth=TRUE}
+selected_samples <- sample_metadata %>%
+  filter(batch == "MSEB0014") %>%
+  filter(type == "Positive") %>%
+  filter(microsample %in% colnames(genome_counts_filt)) %>%
+  filter(!is.na(Xcoord)) %>% 
+  select(microsample) %>% pull()
+
+samples_nmds <- genome_counts_filt %>%
+            column_to_rownames(var="genome") %>%
+            select(all_of(selected_samples)) %>%
+            select(where(~!all(. == 0))) %>%
+            hillpair(.,q=1, metric="C", out="dist") %>%
+            metaMDS(.,trymax = 999, k=2, trace=0) %>%
+            vegan::scores() %>%
+            as_tibble(., rownames = "microsample") %>%
+            left_join(sample_metadata, by = join_by(microsample == microsample)) %>%
+            group_by(size) %>%
+            mutate(microsample_x=mean(NMDS1), microsample_y=mean(NMDS2))
+
+plot3 <- samples_nmds %>%
+  mutate(size = factor(size, levels = c(500, 1500, 2500, 5000, 25000, 50000)))%>%
+            ggplot(aes(x=NMDS1,y=NMDS2, color=size)) +
+                geom_point(size=2) +
+                geom_segment(aes(x=microsample_x, y=microsample_y, xend=NMDS1, yend=NMDS2), alpha=0.2) +
+                scale_color_manual(values=c('#ffdf9e','#ffc273','#e56969','#c1558b','#8a49a1','#4f5bd5')) + #"#a3d1cf","#d1a3cf",
+                theme_classic() +
+                theme(legend.position="right", legend.box="vertical") +
+                guides(color=guide_legend(title="Size"))
+print(plot3)
+```
+
+
+### Compositional # NOT READY
+
+<!-- ```{r beta_diversities_caecum_plot, fig.height=8, fig.width=10, fig.fullwidth=TRUE, eval=FALSE}     -->
+<!-- selected_samples <- sample_metadata %>% -->
+<!--   filter(section != "Ileum") %>% -->
+<!--   filter(section != "Colon") %>% -->
+<!--   filter(batch == "MSEB0011"|batch == "MSEB0012") %>% -->
+<!--   filter(type == "Positive") %>% -->
+<!--   filter(microsample %in% colnames(genome_counts_filt)) %>% -->
+<!--   filter(!is.na(Xcoord)) %>%  -->
+<!--   select(microsample) %>%  -->
+<!--   pull() -->
+
+<!-- selected_samples_counts <- genome_counts %>% -->
+<!--   column_to_rownames(var="genome") %>% -->
+<!--   select(all_of(selected_samples)) %>% -->
+<!--   filter(rowSums(. != 0) > 0) # filter out genomes that are zero for all samples -->
+
+<!-- dim(selected_samples_counts) -->
+
+<!-- # Count the number of zeros in each column -->
+<!-- zero_count_per_column <- colSums(selected_samples_counts == 0) -->
+<!-- print(zero_count_per_column) -->
+<!-- ``` -->
+
+<!-- ```{r beta_diversities_caecum_plot, fig.height=8, fig.width=10, fig.fullwidth=TRUE, eval=FALSE}  -->
+
+<!-- # bayesian zero replacement  -->
+<!-- # https://cran.r-project.org/web//packages/zCompositions/zCompositions.pdf -->
+<!-- zeros_replaced <- cmultRepl(t(selected_samples_counts), # transpose original df -->
+<!--                             label = 0, -->
+<!--                             method = "GBM",  -->
+<!--                             output = "p-counts", -->
+<!--                             threshold = 0.5,  -->
+<!--                             adjust = TRUE, t = NULL, s = NULL, -->
+<!--                             z.warning = 0.8, z.delete = TRUE,  -->
+<!--                             suppress.print = FALSE) -->
+
+<!-- zeros_replaced -->
+<!-- print(rowSums(zeros_replaced == 0)) -->
+
+
+<!-- # https://cran.r-project.org/web//packages/compositions/compositions.pdf -->
+<!-- clr_transformed <- clr(zeros_replaced)  -->
+<!-- clr_transformed -->
+
+<!-- # Count the number of zeros in each column -->
+<!-- print(rowSums(zeros_replaced == 0)) -->
+
+
+<!-- # make new df to store median and variance of clr values of each taxon across selected samples  -->
+<!-- # Calculate medians for each column -->
+<!-- medians <- apply(zeros_replaced, 2, median) -->
+
+<!-- # Calculate variances for each column -->
+<!-- variances <- apply(zeros_replaced, 2, var) -->
+
+<!-- # Combine the medians and variances into a new dataframe -->
+<!-- clr_variance_median <- data.frame(median = medians, variance = variances) -->
+
+<!-- # Set the row names to the column names of the original dataframe -->
+<!-- rownames(clr_variance_median) <- colnames(zeros_replaced) -->
+
+<!-- # Display the result -->
+<!-- print(clr_variance_median) -->
+<!-- ``` -->
+
+<!-- ```{r beta_diversities_caecum_plot, fig.height=8, fig.width=10, fig.fullwidth=TRUE, eval=FALSE}  -->
+<!-- print(clr_variance_median[order(-clr_variance_median$median), ]) -->
+<!-- print(clr_variance_median[order(-clr_variance_median$variance), ]) -->
+
+<!-- ggplot(clr_variance_median, aes(x = variance, y = median, label = rownames(clr_variance_median))) + -->
+<!--   geom_point(size = 3, color = "blue") +        # Plot the points (dots) -->
+<!--   labs(title = "Scatterplot of Variance vs Median", -->
+<!--        x = "Variance", -->
+<!--        y = "Median") + -->
+<!--   theme_minimal()                                -->
+<!-- ``` -->
+
+<!-- ```{r beta_diversities_caecum_plot, fig.height=8, fig.width=10, fig.fullwidth=TRUE, eval=FALSE}  -->
+<!-- # Define thresholds -->
+<!-- variance_threshold <- 0.5 -->
+<!-- median_threshold <- 0.2 -->
+
+<!-- # Filter taxa based on variance > 10 -->
+<!-- taxa_variance_subset <- rownames(clr_variance_median[clr_variance_median$variance > variance_threshold, ]) -->
+
+<!-- # Filter taxa based on median > 5 -->
+<!-- taxa_median_subset <- rownames(clr_variance_median[clr_variance_median$median > median_threshold, ]) -->
+
+<!-- # Filter taxa where variance > 10 AND median > 5 -->
+<!-- taxa_variance_median_subset <- rownames(clr_variance_median[clr_variance_median$variance > variance_threshold & clr_variance_median$median > median_threshold, ]) -->
+
+<!-- # Print the number of taxa that meet each condition -->
+<!-- cat("Number of taxa with variance > threshold:", length(taxa_variance_subset), "\n") -->
+<!-- cat("Number of taxa with median > threshold:", length(taxa_median_subset), "\n") -->
+<!-- cat("Number of taxa with variance and median > thesholds:", length(taxa_variance_median_subset), "\n") -->
+
+<!-- # Print the taxa names that meet both conditions -->
+<!-- cat("Taxa with variance and median > thesholds:\n", taxa_variance_median_subset) -->
+
+<!-- # Plot with threshold lines -->
+<!-- ggplot(clr_variance_median, aes(x = variance, y = median, label = rownames(clr_variance_median))) + -->
+<!--   geom_point(size = 3, color = "blue") +        # Plot the points (dots) -->
+<!--   geom_vline(xintercept = 1, linetype = "dashed", color = "black") + -->
+<!--   geom_vline(xintercept = variance_threshold, linetype = "dashed", color = "red") +  # Vertical line for variance threshold -->
+<!--   geom_hline(yintercept = median_threshold, linetype = "dashed", color = "red") +    # Horizontal line for median threshold -->
+<!--   labs(title = "Scatterplot of Variance vs Median", -->
+<!--        x = "Variance - logscale", -->
+<!--        y = "Median") + -->
+<!--     scale_x_log10() +                                                                  # Apply logarithmic scale to the x-axis -->
+<!--   theme_minimal() -->
+<!-- ``` -->
+<!-- ```{r beta_diversities_caecum_plot, fig.height=8, fig.width=10, fig.fullwidth=TRUE, eval=FALSE}   -->
+<!-- zeros_replaced_filtered <- zeros_replaced %>% -->
+<!--   select(all_of(taxa_variance_median_subset)) -->
+<!-- zeros_replaced_filtered -->
+<!-- ``` -->
+
+<!-- ```{r beta_diversities_caecum_plot, fig.height=8, fig.width=10, fig.fullwidth=TRUE, eval=FALSE}  -->
+<!-- pc <-princomp(acomp(zeros_replaced_filtered)) -->
+<!-- summary(pc) -->
+
+<!-- screeplot(pc, type = "barplot") # or type = 'lines' -->
+<!-- biplot(pc) -->
+
+<!-- biplot(pc, xlabs = rep("", nrow(pc$scores)), ylabs = rep("", nrow(pc$loadings))) -->
+<!-- points(pc$scores[, 1], pc$scores[, 2], pch = 19, col = "blue")  # pch = 19 for solid dots -->
+<!-- #points(pc$scores[, 1], pc$scores[, 2], pch = 19, col = "blue")  # pch = 19 for solid dots -->
+<!-- ``` -->
+<!-- ```{r beta_diversities_caecum_plot, fig.height=15, fig.width=15, fig.fullwidth=TRUE, eval=FALSE} -->
+<!-- # Perform principal component analysis -->
+<!-- pc <- princomp(acomp(zeros_replaced_filtered)) -->
+
+<!-- # Extract the loadings from the PCA object -->
+<!-- loadings <- pc$loadings -->
+
+<!-- # Compute the magnitude of the loadings for the first two components (sum of squares) -->
+<!-- loadings_magnitude <- rowSums(loadings[, 1:2]^2) -->
+
+<!-- # Filter out loadings where both PC1 and PC2 values are zero (i.e., no contribution to the first two PCs) -->
+<!-- non_zero_indices <- which(loadings[, 1] != 0 | loadings[, 2] != 0) -->
+
+<!-- # Get the loadings that are non-zero in either PC1 or PC2 -->
+<!-- non_zero_loadings <- loadings[non_zero_indices, ] -->
+
+<!-- # Create a custom biplot: No sample labels, using non-zero loadings -->
+<!-- biplot(pc, xlabs = rep("", nrow(pc$scores)), ylabs = rep("", nrow(non_zero_loadings))) -->
+
+<!-- # Add dots for the samples (no labels for samples) -->
+<!-- points(pc$scores[, 1], pc$scores[, 2], pch = 19, col = "blue")  # Dots for samples -->
+
+<!-- # Add arrows for the non-zero loadings (no zero-length arrows) -->
+<!-- arrows(0, 0, non_zero_loadings[, 1], non_zero_loadings[, 2], col = "red", length = 0.1) -->
+
+<!-- # Find the indices of the top 10 largest loadings based on magnitude -->
+<!-- top_10_indices <- order(loadings_magnitude, decreasing = TRUE)[1:5] -->
+
+<!-- # Label only the top 10 loadings -->
+<!-- text(loadings[top_10_indices, 1] * 1.1, loadings[top_10_indices, 2] * 1.1,  -->
+<!--      labels = rownames(loadings)[top_10_indices], col = "black", cex = 1) -->
+<!-- ``` -->
+<!-- ```{r beta_diversities_caecum_plot, fig.height=15, fig.width=15, fig.fullwidth=TRUE, eval=FALSE} -->
+
+<!-- loadings_taxa_names <- rownames(loadings)[top_10_indices] -->
+<!-- loadings_taxa_names -->
+<!-- genome_metadata$genome[loadings_taxa_names] -->
+<!-- # taxonomy_loadings  <- genome_metadata %>% -->
+<!-- #     column_to_rownames(var="genome") #%>% -->
+<!-- #     select(all_of(loadings_taxa_names)) -->
+<!-- #  -->
+<!-- # taxonomy_loadings -->
+<!-- ``` -->
+
+
+<!--chapter:end:5-beta_diversity.Rmd-->
+

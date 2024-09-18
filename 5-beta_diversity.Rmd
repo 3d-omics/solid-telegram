@@ -1,0 +1,351 @@
+# Beta diversity
+
+```{r load_data_beta}
+load("data/data.Rdata")
+quality <- read_tsv("results/final_combined_stats.tsv",
+  col_types = cols_only(microsample = col_character(), quality = col_double()),
+  show_col_types = FALSE
+)
+```
+
+## NMDS plots
+
+```{r beta_diversities, warning=FALSE, comments="", message=FALSE, eval=FALSE}
+# selected_samples <- sample_metadata %>%
+#   filter(section != "Ileum") %>%
+#   filter(section != "Colon") %>%
+#   filter(batch == "MSEB0011"|batch == "MSEB0012") %>%
+#   filter(type == "Positive") %>%
+#   filter(microsample %in% colnames(genome_counts_filt)) %>%
+#   filter(!is.na(Xcoord)) %>% 
+#   select(microsample) %>% pull()
+# 
+# #Calculate Hill numbers
+# richness_caecum <- genome_counts_filt %>%
+#             column_to_rownames(var="genome") %>%
+#             select(all_of(selected_samples)) %>%
+#             select(where(~!all(. == 0))) %>%
+#             hillpair(.,q=0, metric="C", out="pair")
+# 
+# neutral_caecum <- genome_counts_filt %>%
+#             column_to_rownames(var="genome") %>%
+#             select(all_of(selected_samples)) %>%
+#             select(where(~!all(. == 0))) %>%
+#             hillpair(.,q=1, metric="C", out="pair")
+# 
+# phylogenetic_caecum <- genome_counts_filt %>%
+#             column_to_rownames(var="genome") %>%
+#             select(all_of(selected_samples)) %>%
+#             select(where(~!all(. == 0))) %>%
+#             hillpair(.,q=1, tree=genome_tree, metric="C", out="pair")
+# 
+# # Merge beta diversities
+# beta_diversity <- richness_caecum %>%
+#       full_join(neutral_caecum,by=c("first", "second")) %>%
+#       full_join(phylogenetic_caecum,by=c("first", "second")) %>%
+#       rename(richness=C.x, neutral=C.y, phylogenetic=C)
+# 
+# # Write alpha diversities
+# beta_diversity %>% write_tsv("results/beta_div.tsv")
+```
+
+```{r beta_diversities_caecum_plot, fig.height=8, fig.width=10, fig.fullwidth=TRUE, eval=FALSE}
+# beta_diversity <- read_tsv("results/beta_div.tsv")
+# 
+# # # Select high-quality samples
+# # caecum_samples_hq <- sample_metadata %>%
+# #   left_join(quality,by=join_by(microsample==microsample)) %>%
+# #   filter(quality >= 5) %>%
+# #   filter(!is.na(Xcoord)) %>%
+# #   select(microsample) %>%
+# #   pull()
+# 
+# caecum_samples_hq <- sample_metadata %>%
+#   filter(section != "Ileum") %>%
+#   filter(section != "Colon") %>%
+#   filter(batch == "MSEB0011"|batch == "MSEB0012") %>%
+#   filter(type == "Positive") %>%
+#   filter(!is.na(Xcoord)) %>% 
+#   select(microsample) %>% 
+#   pull()
+```
+
+Adult vs young animal
+```{r beta_diversities_animals, warning=FALSE, comments="", message=FALSE, fig.height=7, fig.width=12, fig.fullwidth=TRUE}
+selected_samples <- sample_metadata %>%
+  filter(section != "Ileum") %>%
+  filter(section != "Colon") %>%
+  filter(batch == "MSEB0011"|batch == "MSEB0012") %>%
+  filter(type == "Positive") %>%
+  filter(microsample %in% colnames(genome_counts_filt)) %>%
+  filter(!is.na(Xcoord)) %>% 
+  select(microsample) %>% pull()
+
+samples_nmds <- genome_counts_filt %>%
+            column_to_rownames(var="genome") %>%
+            select(all_of(selected_samples)) %>%
+            select(where(~!all(. == 0))) %>%
+            hillpair(.,q=1, metric="C", out="dist") %>%
+            metaMDS(.,trymax = 999, k=2, trace=0) %>%
+            vegan::scores() %>%
+            as_tibble(., rownames = "microsample") %>%
+            left_join(sample_metadata, by = join_by(microsample == microsample)) %>%
+            group_by(cryosection) %>%
+            mutate(microsample_x=mean(NMDS1), microsample_y=mean(NMDS2))
+
+plot1 <- samples_nmds %>%
+            ggplot(aes(x=NMDS1,y=NMDS2, color=animal)) +
+                geom_point(size=2) +
+                geom_segment(aes(x=microsample_x, y=microsample_y, xend=NMDS1, yend=NMDS2), alpha=0.2) +
+                scale_color_manual(values=c('#ffc273','#c1558b')) + #"#a3d1cf","#d1a3cf",
+                theme_classic() +
+                theme(legend.position="right", legend.box="vertical") +
+                guides(color=guide_legend(title="Animal"))
+
+print(plot1)
+```
+Ceacum vs colon (of adult)
+
+```{r beta_diversities_sections, warning=FALSE, comments="", message=FALSE, fig.height=7, fig.width=12, fig.fullwidth=TRUE}
+selected_samples <- sample_metadata %>%
+  filter(section != "Ileum") %>%
+  filter(animal == 'G121e') %>%
+  filter(cycles<16) %>%
+  filter(batch == "MSEB0009"|batch == "MSEB0010"|batch == "MSEB0011"|batch == "MSEB0012") %>%
+  filter(type == "Positive") %>%
+  filter(microsample %in% colnames(genome_counts_filt)) %>%
+  filter(!is.na(Xcoord)) %>% 
+  select(microsample) %>% pull()
+
+samples_nmds <- genome_counts_filt %>%
+            column_to_rownames(var="genome") %>%
+            select(all_of(selected_samples)) %>%
+            select(where(~!all(. == 0))) %>%
+            hillpair(.,q=1, metric="C", out="dist") %>%
+            metaMDS(.,trymax = 999, k=2, trace=0) %>%
+            vegan::scores() %>%
+            as_tibble(., rownames = "microsample") %>%
+            left_join(sample_metadata, by = join_by(microsample == microsample)) %>%
+            group_by(cryosection) %>%
+            mutate(microsample_x=mean(NMDS1), microsample_y=mean(NMDS2))
+
+plot2 <- samples_nmds %>%
+            ggplot(aes(x=NMDS1,y=NMDS2, color=section)) +
+                geom_point(size=2) +
+                geom_segment(aes(x=microsample_x, y=microsample_y, xend=NMDS1, yend=NMDS2), alpha=0.2) +
+                scale_color_manual(values=c('#8a49a1','#4f5bd5')) + #"#a3d1cf","#d1a3cf",
+                theme_classic() +
+                theme(legend.position="right", legend.box="vertical") +
+                guides(color=guide_legend(title="Section"))
+print(plot2)
+```
+
+
+Different LMD sizes
+```{r beta_diversities_sizes, warning=FALSE, comments="", message=FALSE, fig.height=7, fig.width=12, fig.fullwidth=TRUE}
+selected_samples <- sample_metadata %>%
+  filter(batch == "MSEB0014") %>%
+  filter(type == "Positive") %>%
+  filter(microsample %in% colnames(genome_counts_filt)) %>%
+  filter(!is.na(Xcoord)) %>% 
+  select(microsample) %>% pull()
+
+samples_nmds <- genome_counts_filt %>%
+            column_to_rownames(var="genome") %>%
+            select(all_of(selected_samples)) %>%
+            select(where(~!all(. == 0))) %>%
+            hillpair(.,q=1, metric="C", out="dist") %>%
+            metaMDS(.,trymax = 999, k=2, trace=0) %>%
+            vegan::scores() %>%
+            as_tibble(., rownames = "microsample") %>%
+            left_join(sample_metadata, by = join_by(microsample == microsample)) %>%
+            group_by(size) %>%
+            mutate(microsample_x=mean(NMDS1), microsample_y=mean(NMDS2))
+
+plot3 <- samples_nmds %>%
+  mutate(size = factor(size, levels = c(500, 1500, 2500, 5000, 25000, 50000)))%>%
+            ggplot(aes(x=NMDS1,y=NMDS2, color=size)) +
+                geom_point(size=2) +
+                geom_segment(aes(x=microsample_x, y=microsample_y, xend=NMDS1, yend=NMDS2), alpha=0.2) +
+                scale_color_manual(values=c('#ffdf9e','#ffc273','#e56969','#c1558b','#8a49a1','#4f5bd5')) + #"#a3d1cf","#d1a3cf",
+                theme_classic() +
+                theme(legend.position="right", legend.box="vertical") +
+                guides(color=guide_legend(title="Size"))
+print(plot3)
+```
+
+
+### Compositional # NOT READY
+
+<!-- ```{r beta_diversities_caecum_plot, fig.height=8, fig.width=10, fig.fullwidth=TRUE, eval=FALSE}     -->
+<!-- selected_samples <- sample_metadata %>% -->
+<!--   filter(section != "Ileum") %>% -->
+<!--   filter(section != "Colon") %>% -->
+<!--   filter(batch == "MSEB0011"|batch == "MSEB0012") %>% -->
+<!--   filter(type == "Positive") %>% -->
+<!--   filter(microsample %in% colnames(genome_counts_filt)) %>% -->
+<!--   filter(!is.na(Xcoord)) %>%  -->
+<!--   select(microsample) %>%  -->
+<!--   pull() -->
+
+<!-- selected_samples_counts <- genome_counts %>% -->
+<!--   column_to_rownames(var="genome") %>% -->
+<!--   select(all_of(selected_samples)) %>% -->
+<!--   filter(rowSums(. != 0) > 0) # filter out genomes that are zero for all samples -->
+
+<!-- dim(selected_samples_counts) -->
+
+<!-- # Count the number of zeros in each column -->
+<!-- zero_count_per_column <- colSums(selected_samples_counts == 0) -->
+<!-- print(zero_count_per_column) -->
+<!-- ``` -->
+
+<!-- ```{r beta_diversities_caecum_plot, fig.height=8, fig.width=10, fig.fullwidth=TRUE, eval=FALSE}  -->
+
+<!-- # bayesian zero replacement  -->
+<!-- # https://cran.r-project.org/web//packages/zCompositions/zCompositions.pdf -->
+<!-- zeros_replaced <- cmultRepl(t(selected_samples_counts), # transpose original df -->
+<!--                             label = 0, -->
+<!--                             method = "GBM",  -->
+<!--                             output = "p-counts", -->
+<!--                             threshold = 0.5,  -->
+<!--                             adjust = TRUE, t = NULL, s = NULL, -->
+<!--                             z.warning = 0.8, z.delete = TRUE,  -->
+<!--                             suppress.print = FALSE) -->
+
+<!-- zeros_replaced -->
+<!-- print(rowSums(zeros_replaced == 0)) -->
+
+
+<!-- # https://cran.r-project.org/web//packages/compositions/compositions.pdf -->
+<!-- clr_transformed <- clr(zeros_replaced)  -->
+<!-- clr_transformed -->
+
+<!-- # Count the number of zeros in each column -->
+<!-- print(rowSums(zeros_replaced == 0)) -->
+
+
+<!-- # make new df to store median and variance of clr values of each taxon across selected samples  -->
+<!-- # Calculate medians for each column -->
+<!-- medians <- apply(zeros_replaced, 2, median) -->
+
+<!-- # Calculate variances for each column -->
+<!-- variances <- apply(zeros_replaced, 2, var) -->
+
+<!-- # Combine the medians and variances into a new dataframe -->
+<!-- clr_variance_median <- data.frame(median = medians, variance = variances) -->
+
+<!-- # Set the row names to the column names of the original dataframe -->
+<!-- rownames(clr_variance_median) <- colnames(zeros_replaced) -->
+
+<!-- # Display the result -->
+<!-- print(clr_variance_median) -->
+<!-- ``` -->
+
+<!-- ```{r beta_diversities_caecum_plot, fig.height=8, fig.width=10, fig.fullwidth=TRUE, eval=FALSE}  -->
+<!-- print(clr_variance_median[order(-clr_variance_median$median), ]) -->
+<!-- print(clr_variance_median[order(-clr_variance_median$variance), ]) -->
+
+<!-- ggplot(clr_variance_median, aes(x = variance, y = median, label = rownames(clr_variance_median))) + -->
+<!--   geom_point(size = 3, color = "blue") +        # Plot the points (dots) -->
+<!--   labs(title = "Scatterplot of Variance vs Median", -->
+<!--        x = "Variance", -->
+<!--        y = "Median") + -->
+<!--   theme_minimal()                                -->
+<!-- ``` -->
+
+<!-- ```{r beta_diversities_caecum_plot, fig.height=8, fig.width=10, fig.fullwidth=TRUE, eval=FALSE}  -->
+<!-- # Define thresholds -->
+<!-- variance_threshold <- 0.5 -->
+<!-- median_threshold <- 0.2 -->
+
+<!-- # Filter taxa based on variance > 10 -->
+<!-- taxa_variance_subset <- rownames(clr_variance_median[clr_variance_median$variance > variance_threshold, ]) -->
+
+<!-- # Filter taxa based on median > 5 -->
+<!-- taxa_median_subset <- rownames(clr_variance_median[clr_variance_median$median > median_threshold, ]) -->
+
+<!-- # Filter taxa where variance > 10 AND median > 5 -->
+<!-- taxa_variance_median_subset <- rownames(clr_variance_median[clr_variance_median$variance > variance_threshold & clr_variance_median$median > median_threshold, ]) -->
+
+<!-- # Print the number of taxa that meet each condition -->
+<!-- cat("Number of taxa with variance > threshold:", length(taxa_variance_subset), "\n") -->
+<!-- cat("Number of taxa with median > threshold:", length(taxa_median_subset), "\n") -->
+<!-- cat("Number of taxa with variance and median > thesholds:", length(taxa_variance_median_subset), "\n") -->
+
+<!-- # Print the taxa names that meet both conditions -->
+<!-- cat("Taxa with variance and median > thesholds:\n", taxa_variance_median_subset) -->
+
+<!-- # Plot with threshold lines -->
+<!-- ggplot(clr_variance_median, aes(x = variance, y = median, label = rownames(clr_variance_median))) + -->
+<!--   geom_point(size = 3, color = "blue") +        # Plot the points (dots) -->
+<!--   geom_vline(xintercept = 1, linetype = "dashed", color = "black") + -->
+<!--   geom_vline(xintercept = variance_threshold, linetype = "dashed", color = "red") +  # Vertical line for variance threshold -->
+<!--   geom_hline(yintercept = median_threshold, linetype = "dashed", color = "red") +    # Horizontal line for median threshold -->
+<!--   labs(title = "Scatterplot of Variance vs Median", -->
+<!--        x = "Variance - logscale", -->
+<!--        y = "Median") + -->
+<!--     scale_x_log10() +                                                                  # Apply logarithmic scale to the x-axis -->
+<!--   theme_minimal() -->
+<!-- ``` -->
+<!-- ```{r beta_diversities_caecum_plot, fig.height=8, fig.width=10, fig.fullwidth=TRUE, eval=FALSE}   -->
+<!-- zeros_replaced_filtered <- zeros_replaced %>% -->
+<!--   select(all_of(taxa_variance_median_subset)) -->
+<!-- zeros_replaced_filtered -->
+<!-- ``` -->
+
+<!-- ```{r beta_diversities_caecum_plot, fig.height=8, fig.width=10, fig.fullwidth=TRUE, eval=FALSE}  -->
+<!-- pc <-princomp(acomp(zeros_replaced_filtered)) -->
+<!-- summary(pc) -->
+
+<!-- screeplot(pc, type = "barplot") # or type = 'lines' -->
+<!-- biplot(pc) -->
+
+<!-- biplot(pc, xlabs = rep("", nrow(pc$scores)), ylabs = rep("", nrow(pc$loadings))) -->
+<!-- points(pc$scores[, 1], pc$scores[, 2], pch = 19, col = "blue")  # pch = 19 for solid dots -->
+<!-- #points(pc$scores[, 1], pc$scores[, 2], pch = 19, col = "blue")  # pch = 19 for solid dots -->
+<!-- ``` -->
+<!-- ```{r beta_diversities_caecum_plot, fig.height=15, fig.width=15, fig.fullwidth=TRUE, eval=FALSE} -->
+<!-- # Perform principal component analysis -->
+<!-- pc <- princomp(acomp(zeros_replaced_filtered)) -->
+
+<!-- # Extract the loadings from the PCA object -->
+<!-- loadings <- pc$loadings -->
+
+<!-- # Compute the magnitude of the loadings for the first two components (sum of squares) -->
+<!-- loadings_magnitude <- rowSums(loadings[, 1:2]^2) -->
+
+<!-- # Filter out loadings where both PC1 and PC2 values are zero (i.e., no contribution to the first two PCs) -->
+<!-- non_zero_indices <- which(loadings[, 1] != 0 | loadings[, 2] != 0) -->
+
+<!-- # Get the loadings that are non-zero in either PC1 or PC2 -->
+<!-- non_zero_loadings <- loadings[non_zero_indices, ] -->
+
+<!-- # Create a custom biplot: No sample labels, using non-zero loadings -->
+<!-- biplot(pc, xlabs = rep("", nrow(pc$scores)), ylabs = rep("", nrow(non_zero_loadings))) -->
+
+<!-- # Add dots for the samples (no labels for samples) -->
+<!-- points(pc$scores[, 1], pc$scores[, 2], pch = 19, col = "blue")  # Dots for samples -->
+
+<!-- # Add arrows for the non-zero loadings (no zero-length arrows) -->
+<!-- arrows(0, 0, non_zero_loadings[, 1], non_zero_loadings[, 2], col = "red", length = 0.1) -->
+
+<!-- # Find the indices of the top 10 largest loadings based on magnitude -->
+<!-- top_10_indices <- order(loadings_magnitude, decreasing = TRUE)[1:5] -->
+
+<!-- # Label only the top 10 loadings -->
+<!-- text(loadings[top_10_indices, 1] * 1.1, loadings[top_10_indices, 2] * 1.1,  -->
+<!--      labels = rownames(loadings)[top_10_indices], col = "black", cex = 1) -->
+<!-- ``` -->
+<!-- ```{r beta_diversities_caecum_plot, fig.height=15, fig.width=15, fig.fullwidth=TRUE, eval=FALSE} -->
+
+<!-- loadings_taxa_names <- rownames(loadings)[top_10_indices] -->
+<!-- loadings_taxa_names -->
+<!-- genome_metadata$genome[loadings_taxa_names] -->
+<!-- # taxonomy_loadings  <- genome_metadata %>% -->
+<!-- #     column_to_rownames(var="genome") #%>% -->
+<!-- #     select(all_of(loadings_taxa_names)) -->
+<!-- #  -->
+<!-- # taxonomy_loadings -->
+<!-- ``` -->
+

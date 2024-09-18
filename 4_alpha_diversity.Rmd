@@ -1,0 +1,192 @@
+# Alpha diversity
+
+## Load data 
+Load the data produced in the 2nd chapter
+```{r load_data_alpha, warning=FALSE, comments="", message=FALSE}
+load("data/data.Rdata")
+quality <- read_tsv("results/final_combined_stats.tsv",
+  col_types = cols_only(microsample = col_character(), quality = col_double()),
+  show_col_types = FALSE
+)
+```
+
+Define function to estimate alpha diversity measurements.
+```{r alpha_diversity_function, warning=FALSE, comments="", message=FALSE}
+calculate_alpha_diversity <- function(input_data, dataset_name) {
+  # Step 1: Transform the input data (remove rownames if needed)
+  input_data_matrix <- input_data %>%
+    column_to_rownames(var = "genome")
+
+  # Step 2: Calculate richness (q = 0)
+  richness <- hilldiv(input_data_matrix, q = 0) %>%
+    t() %>%
+    as.data.frame() %>%
+    rename(richness = 1) %>%
+    rownames_to_column(var = "microsample")
+
+  # Step 3: Calculate neutral diversity (q = 1)
+  neutral <- hilldiv(input_data_matrix, q = 1) %>%
+    t() %>%
+    as.data.frame() %>%
+    rename(neutral = 1) %>%
+    rownames_to_column(var = "microsample")
+
+  # Step 4: Calculate phylogenetic diversity (q = 1, with genome tree)
+  phylogenetic <- hilldiv(input_data_matrix, q = 1, tree = genome_tree) %>%
+    t() %>%
+    as.data.frame() %>%
+    rename(phylogenetic = 1) %>%
+    rownames_to_column(var = "microsample")
+
+  # Step 5: Merge all diversity metrics
+  alpha_diversity <- richness %>%
+    full_join(neutral, by = "microsample") %>%
+    full_join(phylogenetic, by = "microsample") %>%
+    left_join(sample_metadata, by = "microsample")
+
+  # Step 6: Define the output file name based on the dataset name
+  output_filename <- paste0("results/alpha_div_", dataset_name, ".tsv")
+
+  # Step 7: Write the result to a tsv file
+  alpha_diversity %>% write_tsv(output_filename)
+
+  # Return the alpha_diversity data frame
+  return(alpha_diversity)
+}
+```
+
+Estimate the alpha diversity on the unfiltered and the coverage-filtered counts
+```{r alpha_diversities_filtered, warning=FALSE, comments="", message=FALSE}
+# Calculate alpha diversity for filtered genome counts data
+alpha_div_filtered <- calculate_alpha_diversity(
+  input_data = genome_counts_filt,
+  dataset_name = "filtered"
+)
+``` 
+
+```{r alpha_diversities_unfiltered, warning=FALSE, comments="", message=FALSE}
+# Calculate alpha diversity for unfiltered genome counts data
+alpha_div_unfiltered <- calculate_alpha_diversity(
+  input_data = genome_counts,
+  dataset_name = "unfiltered"
+)
+```
+
+
+```{r alpha_diversities_plot_function, warning=FALSE, comments="", message=FALSE}
+plot_alpha_diversity <- function(alpha_div_dataset, plot_base_name, plot_params_list, filter_type = NULL) {
+  # Initialize a list to store the plots
+  plots_list <- list()
+
+  # Loop through each set of plot parameters and generate plots
+  for (param_name in names(plot_params_list)) {
+    plot_params <- plot_params_list[[param_name]]
+
+    # Apply filters based on plot_params and filter_type if provided
+    filtered_data <- alpha_div_dataset
+
+    # Dynamically apply filter conditions1
+    if (length(plot_params$filter_conditions) > 0) {
+      filtered_data <- filtered_data %>% filter(!!!plot_params$filter_conditions)
+    }
+
+    # Dynamically apply the type filter (positive/negative) if provided
+    if (!is.null(filter_type)) {
+      filtered_data <- filtered_data %>% filter(type %in% filter_type)
+    }
+
+    # Conditionally apply factor() for size based on the presence of 'size' in plot_params$fill_var
+    if (grepl("size", plot_params$fill_var)) {
+      filtered_data <- filtered_data %>%
+        mutate(size = factor(size, levels = c(500, 1500, 2500, 5000, 25000, 50000)))
+    }
+
+    # Pivot the relevant columns for diversity metrics
+    filtered_data <- filtered_data %>%
+      pivot_longer(
+        cols = c(richness, neutral, phylogenetic),
+        names_to = "metric",
+        values_to = "value"
+      ) %>%
+      left_join(quality, by = join_by(microsample == microsample)) %>%
+      mutate(metric = factor(metric, levels = c("richness", "neutral", "phylogenetic"))) %>%
+      filter(!is.na(value)) # Filter out rows with NA values in the value column
+
+    new_facet_formula <- gsub("(.*) ~ \\.", "metric ~ \\1", plot_params$facet_formula)
+
+    # Create the plot
+    plot <- ggplot(filtered_data, aes(x = plot_params$fill_var, y = value, color = quality)) +
+      scale_color_gradient(low = "#c90076", high = "#3598bf", name = "Quality", limits = c(0, 5)) +
+      geom_boxplot(outlier.shape = NA) +
+      geom_jitter(width = 0.2) +
+      facet_nested(as.formula(new_facet_formula), scales = "free", space = "fixed") +
+      theme_minimal() +
+      custom_ggplot_theme +
+      labs(
+        title = plot_params$plot_title,
+        x = stat_params$fill_var
+      )
+
+    # Store the plot in the list
+    plots_list[[param_name]] <- plot
+
+    # Print the plot
+    print(plot)
+
+    # Save the plot as an image file
+    ggsave(
+      filename = paste0("results/figures/alpha_diversity_plots/", plot_base_name, param_name, ".jpg"),
+      plot = plot,
+      device = "jpg",
+      width = 30,
+      height = 30,
+      units = "cm",
+      dpi = 300,
+      limitsize = FALSE
+    )
+  }
+
+  # Return the list of plots
+  return(plots_list)
+}
+```
+
+Coverage-filtered data, positive samples
+```{r alpha_div_filt_pos, warning=FALSE, comments="", message=FALSE, fig.height=8, fig.width=10, fig.fullwidth=TRUE}
+alpha_div_plots <- plot_alpha_diversity(
+  alpha_div_dataset = alpha_div_filtered,
+  plot_base_name = "alpha_div_filt_pos_",
+  plot_params_list = plot_params_list,
+  filter_type = c("Positive")
+)
+```
+
+Coverage-filtered data, all samples
+```{r alpha_div_filt_all, warning=FALSE, comments="", message=FALSE, fig.height=8, fig.width=10, fig.fullwidth=TRUE}
+alpha_div_plots <- plot_alpha_diversity(
+  alpha_div_dataset = alpha_div_filtered,
+  plot_base_name = "alpha_div_filt_all_",
+  plot_params_list = plot_params_list,
+  filter_type = NULL
+)
+```
+
+Unfiltered data, positive samples
+```{r alpha_div_unfilt_pos, warning=FALSE, comments="", message=FALSE, fig.height=8, fig.width=10, fig.fullwidth=TRUE}
+alpha_div_plots <- plot_alpha_diversity(
+  alpha_div_dataset = alpha_div_unfiltered,
+  plot_base_name = "alpha_div_unfilt_pos_",
+  plot_params_list = plot_params_list,
+  filter_type = c("Positive")
+)
+```
+
+Unfiltered data, all samples
+```{r alpha_div_unfilt_all, warning=FALSE, comments="", message=FALSE, fig.height=8, fig.width=10, fig.fullwidth=TRUE}
+alpha_div_plots <- plot_alpha_diversity(
+  alpha_div_dataset = alpha_div_unfiltered,
+  plot_base_name = "alpha_div_unfilt_all_",
+  plot_params_list = plot_params_list,
+  filter_type = NULL
+)
+```
