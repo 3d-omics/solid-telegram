@@ -6,16 +6,18 @@ Import sample metadata from the airtable.
 sample_metadata <- airtable("4-MSE-Info", "appKakM1bnKSekwuW") %>% # get base ID from Airtable browser URL
   read_airtable(., fields = c("ID", "LabBatch_text", "IntestinalSection", "SampleType", 
                               "Xcoord", "Ycoord", "SizeApprox", "cryosection_text", "buffer_text", 
-                              "Collection_Success", "Collection_attempts", "UsedCycles", "animal_temp", "Protocol_text"), id_to_col = TRUE) %>%
+                              "Collection_Success", "Collection_attempts", "UsedCycles", "animal_temp", "Protocol_text",
+                              "Collection_method_text" 
+                              ), id_to_col = TRUE) %>%
   filter(LabBatch_text %in% c("MSEB0006", "MSEB0009", "MSEB0010", "MSEB0011", "MSEB0012", "MSEB0014", "MSEB0015")) %>%
   rename(batch = LabBatch_text, microsample = ID, section = IntestinalSection, type = SampleType, 
          cryosection = cryosection_text, buffer = buffer_text, collection = Collection_Success, collection_attempts = Collection_attempts, 
-         cycles = UsedCycles, animal = animal_temp, size = SizeApprox, protocol = Protocol_text) %>%
+         cycles = UsedCycles, animal = animal_temp, size = SizeApprox, protocol = Protocol_text, collection_method = Collection_method_text) %>%
   select(microsample, section, type, batch, 
          cryosection, buffer, Xcoord, Ycoord, 
          size, collection, collection_attempts, 
-         cycles, animal, protocol) %>%
-  unnest(c(section, Xcoord, Ycoord, size, collection, cycles)) %>%
+         cycles, animal, protocol, collection_method) %>%
+  unnest(c(section, Xcoord, Ycoord, size, collection, cycles, collection_method)) %>%
   arrange(microsample)
 
 print(names(sample_metadata))

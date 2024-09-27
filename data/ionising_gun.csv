@@ -1,0 +1,17 @@
+﻿Slide,Collected,Attempted,Success ratio,Treatment Status,Static charge,Replicate
+A,20,24,0.83,Ionised,First LMD,A
+B,15,24,0.63,Ionised,First LMD,A
+C,10.00,24,0.42,Untreated,First LMD,A
+D,17,24,0.71,Untreated,First LMD,A
+A,12,24,0.50,Untreated,Second LMD,A
+B,14,24,0.58,Untreated,Second LMD,A
+C,9,24,0.38,Ionised,Second LMD,A
+D,24,24,1.00,Ionised,Second LMD,A
+A,16,24,0.67,Ionised,First LMD,B
+B,18,24,0.75,Ionised,First LMD,B
+C,13,24,0.54,Untreated,First LMD,B
+D,20,24,0.83,Untreated,First LMD,B
+A,14,24,0.58,Untreated,Second LMD,B
+B,13,24,0.54,Untreated,Second LMD,B
+C,21,24,0.88,Ionised,Second LMD,B
+D,22,24,0.92,Ionised,Second LMD,B

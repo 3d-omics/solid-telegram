@@ -24,7 +24,7 @@
 <meta name="author" content="Amalia Bogri" />
 
 
-<meta name="date" content="2024-09-18" />
+<meta name="date" content="2024-09-27" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -2140,19 +2140,21 @@ color: #741A48;
 <div class="sourceCode" id="cb3"><pre class="sourceCode r script-source"><code class="sourceCode r"><span id="cb3-1"><a href="data-preparation.html#cb3-1" tabindex="-1"></a>sample_metadata <span class="ot">&lt;-</span> <span class="fu">airtable</span>(<span class="st">&quot;4-MSE-Info&quot;</span>, <span class="st">&quot;appKakM1bnKSekwuW&quot;</span>) <span class="sc">%&gt;%</span> <span class="co"># get base ID from Airtable browser URL</span></span>
 <span id="cb3-2"><a href="data-preparation.html#cb3-2" tabindex="-1"></a>  <span class="fu">read_airtable</span>(., <span class="at">fields =</span> <span class="fu">c</span>(<span class="st">&quot;ID&quot;</span>, <span class="st">&quot;LabBatch_text&quot;</span>, <span class="st">&quot;IntestinalSection&quot;</span>, <span class="st">&quot;SampleType&quot;</span>, </span>
 <span id="cb3-3"><a href="data-preparation.html#cb3-3" tabindex="-1"></a>                              <span class="st">&quot;Xcoord&quot;</span>, <span class="st">&quot;Ycoord&quot;</span>, <span class="st">&quot;SizeApprox&quot;</span>, <span class="st">&quot;cryosection_text&quot;</span>, <span class="st">&quot;buffer_text&quot;</span>, </span>
-<span id="cb3-4"><a href="data-preparation.html#cb3-4" tabindex="-1"></a>                              <span class="st">&quot;Collection_Success&quot;</span>, <span class="st">&quot;Collection_attempts&quot;</span>, <span class="st">&quot;UsedCycles&quot;</span>, <span class="st">&quot;animal_temp&quot;</span>, <span class="st">&quot;Protocol_text&quot;</span>), <span class="at">id_to_col =</span> <span class="cn">TRUE</span>) <span class="sc">%&gt;%</span></span>
-<span id="cb3-5"><a href="data-preparation.html#cb3-5" tabindex="-1"></a>  <span class="fu">filter</span>(LabBatch_text <span class="sc">%in%</span> <span class="fu">c</span>(<span class="st">&quot;MSEB0006&quot;</span>, <span class="st">&quot;MSEB0009&quot;</span>, <span class="st">&quot;MSEB0010&quot;</span>, <span class="st">&quot;MSEB0011&quot;</span>, <span class="st">&quot;MSEB0012&quot;</span>, <span class="st">&quot;MSEB0014&quot;</span>, <span class="st">&quot;MSEB0015&quot;</span>)) <span class="sc">%&gt;%</span></span>
-<span id="cb3-6"><a href="data-preparation.html#cb3-6" tabindex="-1"></a>  <span class="fu">rename</span>(<span class="at">batch =</span> LabBatch_text, <span class="at">microsample =</span> ID, <span class="at">section =</span> IntestinalSection, <span class="at">type =</span> SampleType, </span>
-<span id="cb3-7"><a href="data-preparation.html#cb3-7" tabindex="-1"></a>         <span class="at">cryosection =</span> cryosection_text, <span class="at">buffer =</span> buffer_text, <span class="at">collection =</span> Collection_Success, <span class="at">collection_attempts =</span> Collection_attempts, </span>
-<span id="cb3-8"><a href="data-preparation.html#cb3-8" tabindex="-1"></a>         <span class="at">cycles =</span> UsedCycles, <span class="at">animal =</span> animal_temp, <span class="at">size =</span> SizeApprox, <span class="at">protocol =</span> Protocol_text) <span class="sc">%&gt;%</span></span>
-<span id="cb3-9"><a href="data-preparation.html#cb3-9" tabindex="-1"></a>  <span class="fu">select</span>(microsample, section, type, batch, </span>
-<span id="cb3-10"><a href="data-preparation.html#cb3-10" tabindex="-1"></a>         cryosection, buffer, Xcoord, Ycoord, </span>
-<span id="cb3-11"><a href="data-preparation.html#cb3-11" tabindex="-1"></a>         size, collection, collection_attempts, </span>
-<span id="cb3-12"><a href="data-preparation.html#cb3-12" tabindex="-1"></a>         cycles, animal, protocol) <span class="sc">%&gt;%</span></span>
-<span id="cb3-13"><a href="data-preparation.html#cb3-13" tabindex="-1"></a>  <span class="fu">unnest</span>(<span class="fu">c</span>(section, Xcoord, Ycoord, size, collection, cycles)) <span class="sc">%&gt;%</span></span>
-<span id="cb3-14"><a href="data-preparation.html#cb3-14" tabindex="-1"></a>  <span class="fu">arrange</span>(microsample)</span>
-<span id="cb3-15"><a href="data-preparation.html#cb3-15" tabindex="-1"></a></span>
-<span id="cb3-16"><a href="data-preparation.html#cb3-16" tabindex="-1"></a><span class="fu">print</span>(<span class="fu">names</span>(sample_metadata))</span></code></pre></div>
+<span id="cb3-4"><a href="data-preparation.html#cb3-4" tabindex="-1"></a>                              <span class="st">&quot;Collection_Success&quot;</span>, <span class="st">&quot;Collection_attempts&quot;</span>, <span class="st">&quot;UsedCycles&quot;</span>, <span class="st">&quot;animal_temp&quot;</span>, <span class="st">&quot;Protocol_text&quot;</span>,</span>
+<span id="cb3-5"><a href="data-preparation.html#cb3-5" tabindex="-1"></a>                              <span class="st">&quot;Collection_method_text&quot;</span> </span>
+<span id="cb3-6"><a href="data-preparation.html#cb3-6" tabindex="-1"></a>                              ), <span class="at">id_to_col =</span> <span class="cn">TRUE</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb3-7"><a href="data-preparation.html#cb3-7" tabindex="-1"></a>  <span class="fu">filter</span>(LabBatch_text <span class="sc">%in%</span> <span class="fu">c</span>(<span class="st">&quot;MSEB0006&quot;</span>, <span class="st">&quot;MSEB0009&quot;</span>, <span class="st">&quot;MSEB0010&quot;</span>, <span class="st">&quot;MSEB0011&quot;</span>, <span class="st">&quot;MSEB0012&quot;</span>, <span class="st">&quot;MSEB0014&quot;</span>, <span class="st">&quot;MSEB0015&quot;</span>)) <span class="sc">%&gt;%</span></span>
+<span id="cb3-8"><a href="data-preparation.html#cb3-8" tabindex="-1"></a>  <span class="fu">rename</span>(<span class="at">batch =</span> LabBatch_text, <span class="at">microsample =</span> ID, <span class="at">section =</span> IntestinalSection, <span class="at">type =</span> SampleType, </span>
+<span id="cb3-9"><a href="data-preparation.html#cb3-9" tabindex="-1"></a>         <span class="at">cryosection =</span> cryosection_text, <span class="at">buffer =</span> buffer_text, <span class="at">collection =</span> Collection_Success, <span class="at">collection_attempts =</span> Collection_attempts, </span>
+<span id="cb3-10"><a href="data-preparation.html#cb3-10" tabindex="-1"></a>         <span class="at">cycles =</span> UsedCycles, <span class="at">animal =</span> animal_temp, <span class="at">size =</span> SizeApprox, <span class="at">protocol =</span> Protocol_text, <span class="at">collection_method =</span> Collection_method_text) <span class="sc">%&gt;%</span></span>
+<span id="cb3-11"><a href="data-preparation.html#cb3-11" tabindex="-1"></a>  <span class="fu">select</span>(microsample, section, type, batch, </span>
+<span id="cb3-12"><a href="data-preparation.html#cb3-12" tabindex="-1"></a>         cryosection, buffer, Xcoord, Ycoord, </span>
+<span id="cb3-13"><a href="data-preparation.html#cb3-13" tabindex="-1"></a>         size, collection, collection_attempts, </span>
+<span id="cb3-14"><a href="data-preparation.html#cb3-14" tabindex="-1"></a>         cycles, animal, protocol, collection_method) <span class="sc">%&gt;%</span></span>
+<span id="cb3-15"><a href="data-preparation.html#cb3-15" tabindex="-1"></a>  <span class="fu">unnest</span>(<span class="fu">c</span>(section, Xcoord, Ycoord, size, collection, cycles, collection_method)) <span class="sc">%&gt;%</span></span>
+<span id="cb3-16"><a href="data-preparation.html#cb3-16" tabindex="-1"></a>  <span class="fu">arrange</span>(microsample)</span>
+<span id="cb3-17"><a href="data-preparation.html#cb3-17" tabindex="-1"></a></span>
+<span id="cb3-18"><a href="data-preparation.html#cb3-18" tabindex="-1"></a><span class="fu">print</span>(<span class="fu">names</span>(sample_metadata))</span></code></pre></div>
 </div>
 <div id="count-data" class="section level2 hasAnchor" number="2.2">
 <h2><span class="header-section-number">2.2</span> Count data<a href="data-preparation.html#count-data" class="anchor-section" aria-label="Anchor link to header"></a></h2>

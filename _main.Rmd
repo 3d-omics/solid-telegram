@@ -121,16 +121,18 @@ Import sample metadata from the airtable.
 sample_metadata <- airtable("4-MSE-Info", "appKakM1bnKSekwuW") %>% # get base ID from Airtable browser URL
   read_airtable(., fields = c("ID", "LabBatch_text", "IntestinalSection", "SampleType", 
                               "Xcoord", "Ycoord", "SizeApprox", "cryosection_text", "buffer_text", 
-                              "Collection_Success", "Collection_attempts", "UsedCycles", "animal_temp", "Protocol_text"), id_to_col = TRUE) %>%
+                              "Collection_Success", "Collection_attempts", "UsedCycles", "animal_temp", "Protocol_text",
+                              "Collection_method_text" 
+                              ), id_to_col = TRUE) %>%
   filter(LabBatch_text %in% c("MSEB0006", "MSEB0009", "MSEB0010", "MSEB0011", "MSEB0012", "MSEB0014", "MSEB0015")) %>%
   rename(batch = LabBatch_text, microsample = ID, section = IntestinalSection, type = SampleType, 
          cryosection = cryosection_text, buffer = buffer_text, collection = Collection_Success, collection_attempts = Collection_attempts, 
-         cycles = UsedCycles, animal = animal_temp, size = SizeApprox, protocol = Protocol_text) %>%
+         cycles = UsedCycles, animal = animal_temp, size = SizeApprox, protocol = Protocol_text, collection_method = Collection_method_text) %>%
   select(microsample, section, type, batch, 
          cryosection, buffer, Xcoord, Ycoord, 
          size, collection, collection_attempts, 
-         cycles, animal, protocol) %>%
-  unnest(c(section, Xcoord, Ycoord, size, collection, cycles)) %>%
+         cycles, animal, protocol, collection_method) %>%
+  unnest(c(section, Xcoord, Ycoord, size, collection, cycles, collection_method)) %>%
   arrange(microsample)
 
 print(names(sample_metadata))
@@ -687,7 +689,7 @@ plot_params_LOD <- list(
 ```
 
 #### Automation trial
-Compare the quality of library prep with DreamPrep (MSEB0015) vs manual (MSEB0011) for ceacum of focal chicken
+Compare library prep with DreamPrep (MSEB0015) vs manual (MSEB0011) for ceacum of focal chicken
 ```{r data_set_automation, warning=FALSE, comments="", message=FALSE}
 plot_params_automation <- list(
   filter_conditions = list(
@@ -703,7 +705,7 @@ plot_params_automation <- list(
 ```
 
 #### Full vs. half reaction (library prep with UltraLowV2 Tecan kit)
-Compare the quality of library prep with full reaction (MSEB0006, MSEB0009, MSEB0010) vs half reaction (MSEB0011, MSEB0012) of focal chicken, ceacum and colon (only low PCR cycles). NB! both buffers.
+Compare library prep with full reaction (MSEB0006, MSEB0009, MSEB0010) vs half reaction (MSEB0011, MSEB0012) of focal chicken, ceacum and colon (only low PCR cycles). NB! both buffers.
 ```{r data_set_protocol, warning=FALSE, comments="", message=FALSE}
 plot_params_protocol <- list(
   filter_conditions = list(
@@ -721,7 +723,7 @@ plot_params_protocol <- list(
 ```
 
 #### Ceacum vs colon
-Compare the quality of colon vs caecum samples of the focal chicken (and only low PCR cycles)
+Compare colon vs caecum samples of the focal chicken (and only low PCR cycles)
 ```{r data_set_section, warning=FALSE, comments="", message=FALSE}
 plot_params_section <- list(
   filter_conditions = list(
@@ -739,7 +741,7 @@ plot_params_section <- list(
 ```
 
 #### Adult vs young chicken
-Compare the quality of samples from the focal (adult) chicken vs the younger chicken, for both colon (MSEB0012) and caecum (MSEB0011).
+Compare samples from the focal (adult) chicken vs the younger chicken, for both colon (MSEB0012) and caecum (MSEB0011).
 ```{r data_set_animal, warning=FALSE, comments="", message=FALSE}
 plot_params_animal <- list(
   filter_conditions = list(
@@ -754,7 +756,7 @@ plot_params_animal <- list(
 ```
 
 #### LMD collection attemps
-Compare the quality of samples coloured by the number of attempts to collect the LMD sample. LOD trial excluded.
+Compare samples coloured by the number of attempts to collect the LMD sample. LOD trial excluded.
 ```{r data_set_collection_attempts, warning=FALSE, comments="", message=FALSE}
 plot_params_collection_attempts <- list(
   filter_conditions = list(
@@ -773,7 +775,7 @@ plot_params_collection_attempts <- list(
 ```
 
 #### LMD collection success
-Compare the quality of samples coloured by the LMD success jugded upon visual inspection of the collection lids. LOD trial excluded.
+Compare samples coloured by the LMD success jugded upon visual inspection of the collection lids. LOD trial excluded.
 ```{r data_set_collection_success, warning=FALSE, comments="", message=FALSE}
 plot_params_collection_success <- list(
   filter_conditions = list(
@@ -791,8 +793,42 @@ plot_params_collection_success <- list(
 )
 ```
 
+#### LMD collection container
+Compare samples coloured by the container they were collected in during the microsection.
+```{r data_set_container_collection, warning=FALSE, comments="", message=FALSE}
+plot_params_container_collection <- list(
+  filter_conditions = list(
+    quote(section != "Ileum"), 
+    quote(batch == "MSEB0009"),
+    quote(cycles<16), 
+  quote(protocol == "ULV2_Full")
+  ),
+  labels_title = "Collection_container",
+  facet_formula = "type + collection_method ~ .",
+  scale_fill_manual_val = c('#c1558b','#4f5bd5'),
+  fill_var = "collection_method",
+  plot_title = "LMD collection container"
+)
+```
 
 
+#### Sections of Ceacum vs colon
+Compare colon vs caecum samples of the focal chicken (and only low PCR cycles)
+```{r data_set_slices, warning=FALSE, comments="", message=FALSE}
+plot_params_slices <- list(
+  filter_conditions = list(
+    quote(section != "Ileum"), 
+    quote(batch == "MSEB0011"|batch == "MSEB0012"),
+    quote(animal == 'G121e'),
+    quote(cycles<16)
+  ),
+  labels_title = "Section",
+  facet_formula = "type + section + cryosection ~ .", #"type+ batch ~ ."
+  scale_fill_manual_val = c('#e56969','#8a49a1'),
+  fill_var = "section",
+  plot_title = "Caecum vs colon"
+)
+```
 
 ### Define a list of all the experiments/trials settings that you want to plot.
 
@@ -806,7 +842,9 @@ plot_params_list <- list(
   plot_section = plot_params_section,
   plot_animal = plot_params_animal,
   plot_collection_attempts = plot_params_collection_attempts,
-  plot_collection_success = plot_params_collection_success
+  plot_collection_success = plot_params_collection_success,
+  plot_container_collection = plot_params_container_collection,
+  plot_slices = plot_params_slices
 )
 
 ```
@@ -1277,6 +1315,31 @@ plots <- generate_and_save_plots(
   filter_type = c("Positive")
   )
 ```
+Filtered data, no quality filter, phylum level.
+```{r plot_taxonomy_filtered_phyla_no_quality, fig.height=7, fig.width=12, fig.fullwidth=TRUE}
+plots <- generate_and_save_plots(
+  taxonomy_dataset = taxonomy_dataset_filt, 
+  plot_base_name = "tax_filt_phyla_no_quality_", 
+  plot_params_list = plot_params_list, 
+  plot_function = plot_taxonomy_data,
+  filter_quality = NULL, 
+  filter_type = c("Positive")
+  )
+```
+
+Filtered data, no quality filter, phylum level.
+```{r plot_taxonomy_filtered_phyla_no_quality_all, fig.height=7, fig.width=12, fig.fullwidth=TRUE}
+plots <- generate_and_save_plots(
+  taxonomy_dataset = taxonomy_dataset_filt, 
+  plot_base_name = "tax_filt_phyla_no_quality_all_", 
+  plot_params_list = plot_params_list, 
+  plot_function = plot_taxonomy_data,
+  filter_quality = NULL, 
+  filter_type = NULL
+  )
+```
+
+
 Filtered data, genus level.
 ```{r plot_taxonomy_filtered_genera, fig.height=7, fig.width=12, fig.fullwidth=TRUE}
 plots <- generate_and_save_plots(
@@ -1448,7 +1511,7 @@ plots <- plot_tree_heaatmap(
 ## Composition jitterplot functions
 
 ```{r jitterplot_function, warning=FALSE, comments="", message=FALSE}
-plot_jitterplot <- function(taxonomy_data, plot_base_name, plot_params_list, taxon_level, filter_type = NULL) {
+plot_jitterplot <- function(taxonomy_data, plot_base_name, plot_params_list, taxon_level, filter_quality = NULL, filter_type = NULL) {
 
     # Initialize a list to store the plots
   plots_list <- list()
@@ -1465,6 +1528,11 @@ plot_jitterplot <- function(taxonomy_data, plot_base_name, plot_params_list, tax
     if (length(plot_params$filter_conditions) > 0) {
       filtered_data <- filtered_data %>% filter(!!!plot_params$filter_conditions)
     }
+    
+    # Dynamically apply the quality filter if provided
+    if (!is.null(filter_quality)) {
+      filtered_data <- filtered_data %>% filter(quality == filter_quality)
+    }
   
     # Dynamically apply the type filter (positive/negative) if provided
     if (!is.null(filter_type)) {
@@ -1477,36 +1545,61 @@ plot_jitterplot <- function(taxonomy_data, plot_base_name, plot_params_list, tax
         mutate(size = factor(size, levels = c(500, 1500, 2500, 5000, 25000, 50000)))
     }
     
-    # Apply special processing if taxon_level is genus
     if (taxon_level == "genus") {
+      # Summarise relabun but keep only the grouping columns
+      genus_data <- filtered_data %>%
+        group_by(microsample, cryosection, phylum, genus) %>%
+        summarise(relabun = sum(count), .groups = 'drop')
+      # Now join back with the original data to retain other columns
       filtered_data <- filtered_data %>%
-        filter(genus != "g__") %>%                       # Filter out "g__" genus
-        mutate(genus = sub("^g__", "", genus))           # Remove the "g__" prefix
+        left_join(genus_data, by = c("microsample", "cryosection", "phylum", "genus")) %>%
+        distinct(microsample, cryosection, phylum, class, order, family, genus, section, type, batch, buffer, size, collection, collection_attempts, animal, protocol, cycles, collection_method, relabun) %>%
+        filter(genus != "g__") %>%
+        mutate(genus = sub("^g__", "", genus))  # Remove the "g__" prefix
+      summary_column <- "relabun"
+    } else {
+      summary_column <- "count"
     }
+      
     
+    # Composition
     summary <- filtered_data %>%
       group_by(!!sym(taxon_level)) %>%
-      summarise(mean = geometric.mean(count, na.rm = T)) %>% #geometric mean because it is a %
+      summarise(mean = geometric.mean(!!sym(summary_column), na.rm = T)) %>% #geometric mean because it is a %
       arrange(-mean)
+      
+   # Summarise based on taxon_level using the predefined summary column
+    # summary <- filtered_data %>%
+    #   group_by(!!sym(taxon_level)) %>%
+    #   summarise(mean = mean(!!sym(summary_column), na.rm = TRUE), .groups = 'drop') %>%
+    #   arrange(-mean)
     
+    # print(summary)
+    # print(filtered_data)
+    # total_counts_per_sample <- filtered_data %>%
+    #   group_by(microsample) %>%                  # Group by the sample column
+    #   summarise(total_count = sum(!!sym(summary_column)))    # Summarise the total counts for each sample
+    # print(total_counts_per_sample) # at genus level, not all samples will reach =1 because we have removed genomes that did not identify down to a genus.
     
+    # Reorder taxon_level based on the summary
     plot_data <- filtered_data %>%
       mutate(!!sym(taxon_level) := factor(!!sym(taxon_level), levels = rev(summary %>% pull(!!sym(taxon_level)))))
-    
-    
+      
+      
     new_facet_formula <- gsub("(.*) ~ (.*)", "\\2 ~ \\1", plot_params$facet_formula)
   
     plot <- plot_data %>%
-      ggplot(aes(x = count, y = !!sym(taxon_level), group = !!sym(taxon_level), color = phylum)) +
+      ggplot(aes(x = !!sym(summary_column), y = !!sym(taxon_level), group = !!sym(taxon_level), color = phylum)) +
         scale_color_manual(values = phylum_colors) +
         geom_jitter(alpha = 0.3, size=0.5) +
         facet_nested(as.formula(new_facet_formula)) +
         theme_minimal() +
-        labs(y = "Family", 
+        labs(y = "Taxa", 
              x = "Relative abundance", 
              color = "Phylum",
              title = plot_params$plot_title)+
-        custom_ggplot_theme
+        custom_ggplot_theme + 
+       scale_x_continuous(limits = c(0, 1))
 
     # Store the plot in the list
     plots_list[[param_name]] <- plot
@@ -1531,7 +1624,6 @@ plot_jitterplot <- function(taxonomy_data, plot_base_name, plot_params_list, tax
 }
 ```
 
-
 Coverage filtered, positive samples, genome level
 ```{r jitterplot_filtered_positive_genome, fig.height=7, fig.width=12, fig.fullwidth=TRUE}
 plots <- plot_jitterplot(
@@ -1539,9 +1631,11 @@ plots <- plot_jitterplot(
   plot_base_name = "jitterplot_filt_genome_positive_", 
   plot_params_list = plot_params_list,
   taxon_level = 'genome',
+  filter_quality = NULL,
   filter_type = c("Positive")
   )
 ```
+
 Coverage filtered, positive samples, genus level
 ```{r jitterplot_filtered_positive_genus, fig.height=7, fig.width=12, fig.fullwidth=TRUE}
 plots <- plot_jitterplot(
@@ -1549,6 +1643,19 @@ plots <- plot_jitterplot(
   plot_base_name = "jitterplot_filt_genus_positive_", 
   plot_params_list = plot_params_list,
   taxon_level = 'genus',
+  filter_quality = NULL,
+  filter_type = c("Positive")
+  )
+```
+
+Coverage filtered, positive samples, genus level, filter quality
+```{r jitterplot_filtered_positive_genus_quality_4, fig.height=7, fig.width=12, fig.fullwidth=TRUE}
+plots <- plot_jitterplot(
+  taxonomy_data = taxonomy_dataset_filt, 
+  plot_base_name = "jitterplot_filt_genus_positive_quality", 
+  plot_params_list = plot_params_list,
+  taxon_level = 'genus',
+  filter_quality = 4,
   filter_type = c("Positive")
   )
 ```
@@ -1559,6 +1666,7 @@ plots <- plot_jitterplot(
   plot_base_name = "jitterplot_unfilt_genome_positive_", 
   plot_params_list = plot_params_list,
   taxon_level = 'genome',
+  filter_quality = NULL,
   filter_type = c("Positive")
   )
 ```
@@ -1570,6 +1678,7 @@ plots <- plot_jitterplot(
   plot_base_name = "jitterplot_unfilt_genus_positive_", 
   plot_params_list = plot_params_list,
   taxon_level = 'genus',
+  filter_quality = NULL,
   filter_type = c("Positive")
   )
 ```
@@ -1581,6 +1690,7 @@ plots <- plot_jitterplot(
   plot_base_name = "jitterplot_unfilt_genome_negative_", 
   plot_params_list = plot_params_list[1:7], # 1:7 because the rest do not include negatives
   taxon_level = 'genome',
+  filter_quality = NULL,
   filter_type = c("NegativeMembrane", "NegativeCollection", "NegativeReaction")
   )
 ```
@@ -1592,6 +1702,7 @@ plots <- plot_jitterplot(
   plot_base_name = "jitterplot_unfilt_genus_negative_", 
   plot_params_list = plot_params_list[1:7], # 1:7 because the rest do not include negatives
   taxon_level = 'genus',
+  filter_quality = NULL,
   filter_type = c("NegativeMembrane", "NegativeCollection", "NegativeReaction")
   )
 ```
@@ -1990,6 +2101,16 @@ plot1 <- samples_nmds %>%
                 guides(color=guide_legend(title="Animal"))
 
 print(plot1)
+ggsave(
+      filename = paste0("results/figures/beta_diversity_plots/animal.jpg"),
+      plot = plot1,
+      device = "jpg",
+      width = 30,
+      height = 30,
+      units = "cm",
+      dpi = 300,
+      limitsize = FALSE
+    )
 ```
 Ceacum vs colon (of adult)
 
@@ -2025,8 +2146,62 @@ plot2 <- samples_nmds %>%
                 theme(legend.position="right", legend.box="vertical") +
                 guides(color=guide_legend(title="Section"))
 print(plot2)
-```
 
+ggsave(
+      filename = paste0("results/figures/beta_diversity_plots/section.jpg"),
+      plot = plot2,
+      device = "jpg",
+      width = 30,
+      height = 30,
+      units = "cm",
+      dpi = 300,
+      limitsize = FALSE
+    )
+```
+```{r beta_diversities_cryosection, warning=FALSE, comments="", message=FALSE, fig.height=7, fig.width=12, fig.fullwidth=TRUE}
+selected_samples <- sample_metadata %>%
+  filter(section != "Ileum") %>%
+  filter(animal == 'G121e') %>%
+  filter(cycles<16) %>%
+  filter(batch == "MSEB0011"|batch == "MSEB0012") %>%
+  filter(type == "Positive") %>%
+  filter(microsample %in% colnames(genome_counts_filt)) %>%
+  filter(!is.na(Xcoord)) %>% 
+  select(microsample) %>% pull()
+
+samples_nmds <- genome_counts_filt %>%
+            column_to_rownames(var="genome") %>%
+            select(all_of(selected_samples)) %>%
+            select(where(~!all(. == 0))) %>%
+            hillpair(.,q=1, metric="C", out="dist") %>%
+            metaMDS(.,trymax = 999, k=2, trace=0) %>%
+            vegan::scores() %>%
+            as_tibble(., rownames = "microsample") %>%
+            left_join(sample_metadata, by = join_by(microsample == microsample)) %>%
+            group_by(cryosection) %>%
+            mutate(microsample_x=mean(NMDS1), microsample_y=mean(NMDS2))
+
+plot4 <- samples_nmds %>%
+            ggplot(aes(x=NMDS1,y=NMDS2, color=cryosection)) +
+                geom_point(size=2) +
+                geom_segment(aes(x=microsample_x, y=microsample_y, xend=NMDS1, yend=NMDS2), alpha=0.2) +
+                scale_color_manual(values=c('#ffc273','#e56969','#8a49a1','#4f5bd5')) + #"#a3d1cf","#d1a3cf",
+                theme_classic() +
+                theme(legend.position="right", legend.box="vertical") +
+                guides(color=guide_legend(title="Section"))
+print(plot2)
+
+ggsave(
+      filename = paste0("results/figures/beta_diversity_plots/cryosection.jpg"),
+      plot = plot4,
+      device = "jpg",
+      width = 30,
+      height = 30,
+      units = "cm",
+      dpi = 300,
+      limitsize = FALSE
+    )
+```
 
 Different LMD sizes
 ```{r beta_diversities_sizes, warning=FALSE, comments="", message=FALSE, fig.height=7, fig.width=12, fig.fullwidth=TRUE}
@@ -2059,6 +2234,16 @@ plot3 <- samples_nmds %>%
                 theme(legend.position="right", legend.box="vertical") +
                 guides(color=guide_legend(title="Size"))
 print(plot3)
+ggsave(
+      filename = paste0("results/figures/beta_diversity_plots/LOD.jpg"),
+      plot = plot3,
+      device = "jpg",
+      width = 30,
+      height = 30,
+      units = "cm",
+      dpi = 300,
+      limitsize = FALSE
+    )
 ```
 
 

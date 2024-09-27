@@ -389,7 +389,7 @@ plot_params_LOD <- list(
 ```
 
 #### Automation trial
-Compare the quality of library prep with DreamPrep (MSEB0015) vs manual (MSEB0011) for ceacum of focal chicken
+Compare library prep with DreamPrep (MSEB0015) vs manual (MSEB0011) for ceacum of focal chicken
 ```{r data_set_automation, warning=FALSE, comments="", message=FALSE}
 plot_params_automation <- list(
   filter_conditions = list(
@@ -405,7 +405,7 @@ plot_params_automation <- list(
 ```
 
 #### Full vs. half reaction (library prep with UltraLowV2 Tecan kit)
-Compare the quality of library prep with full reaction (MSEB0006, MSEB0009, MSEB0010) vs half reaction (MSEB0011, MSEB0012) of focal chicken, ceacum and colon (only low PCR cycles). NB! both buffers.
+Compare library prep with full reaction (MSEB0006, MSEB0009, MSEB0010) vs half reaction (MSEB0011, MSEB0012) of focal chicken, ceacum and colon (only low PCR cycles). NB! both buffers.
 ```{r data_set_protocol, warning=FALSE, comments="", message=FALSE}
 plot_params_protocol <- list(
   filter_conditions = list(
@@ -423,7 +423,7 @@ plot_params_protocol <- list(
 ```
 
 #### Ceacum vs colon
-Compare the quality of colon vs caecum samples of the focal chicken (and only low PCR cycles)
+Compare colon vs caecum samples of the focal chicken (and only low PCR cycles)
 ```{r data_set_section, warning=FALSE, comments="", message=FALSE}
 plot_params_section <- list(
   filter_conditions = list(
@@ -441,7 +441,7 @@ plot_params_section <- list(
 ```
 
 #### Adult vs young chicken
-Compare the quality of samples from the focal (adult) chicken vs the younger chicken, for both colon (MSEB0012) and caecum (MSEB0011).
+Compare samples from the focal (adult) chicken vs the younger chicken, for both colon (MSEB0012) and caecum (MSEB0011).
 ```{r data_set_animal, warning=FALSE, comments="", message=FALSE}
 plot_params_animal <- list(
   filter_conditions = list(
@@ -456,7 +456,7 @@ plot_params_animal <- list(
 ```
 
 #### LMD collection attemps
-Compare the quality of samples coloured by the number of attempts to collect the LMD sample. LOD trial excluded.
+Compare samples coloured by the number of attempts to collect the LMD sample. LOD trial excluded.
 ```{r data_set_collection_attempts, warning=FALSE, comments="", message=FALSE}
 plot_params_collection_attempts <- list(
   filter_conditions = list(
@@ -475,7 +475,7 @@ plot_params_collection_attempts <- list(
 ```
 
 #### LMD collection success
-Compare the quality of samples coloured by the LMD success jugded upon visual inspection of the collection lids. LOD trial excluded.
+Compare samples coloured by the LMD success jugded upon visual inspection of the collection lids. LOD trial excluded.
 ```{r data_set_collection_success, warning=FALSE, comments="", message=FALSE}
 plot_params_collection_success <- list(
   filter_conditions = list(
@@ -493,8 +493,42 @@ plot_params_collection_success <- list(
 )
 ```
 
+#### LMD collection container
+Compare samples coloured by the container they were collected in during the microsection.
+```{r data_set_container_collection, warning=FALSE, comments="", message=FALSE}
+plot_params_container_collection <- list(
+  filter_conditions = list(
+    quote(section != "Ileum"), 
+    quote(batch == "MSEB0009"),
+    quote(cycles<16), 
+  quote(protocol == "ULV2_Full")
+  ),
+  labels_title = "Collection_container",
+  facet_formula = "type + collection_method ~ .",
+  scale_fill_manual_val = c('#c1558b','#4f5bd5'),
+  fill_var = "collection_method",
+  plot_title = "LMD collection container"
+)
+```
 
 
+#### Sections of Ceacum vs colon
+Compare colon vs caecum samples of the focal chicken (and only low PCR cycles)
+```{r data_set_slices, warning=FALSE, comments="", message=FALSE}
+plot_params_slices <- list(
+  filter_conditions = list(
+    quote(section != "Ileum"), 
+    quote(batch == "MSEB0011"|batch == "MSEB0012"),
+    quote(animal == 'G121e'),
+    quote(cycles<16)
+  ),
+  labels_title = "Section",
+  facet_formula = "type + section + cryosection ~ .", #"type+ batch ~ ."
+  scale_fill_manual_val = c('#e56969','#8a49a1'),
+  fill_var = "section",
+  plot_title = "Caecum vs colon"
+)
+```
 
 ### Define a list of all the experiments/trials settings that you want to plot.
 
@@ -508,7 +542,9 @@ plot_params_list <- list(
   plot_section = plot_params_section,
   plot_animal = plot_params_animal,
   plot_collection_attempts = plot_params_collection_attempts,
-  plot_collection_success = plot_params_collection_success
+  plot_collection_success = plot_params_collection_success,
+  plot_container_collection = plot_params_container_collection,
+  plot_slices = plot_params_slices
 )
 
 ```
