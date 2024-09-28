@@ -1317,26 +1317,26 @@ plots <- generate_and_save_plots(
 ```
 Filtered data, no quality filter, phylum level.
 ```{r plot_taxonomy_filtered_phyla_no_quality, fig.height=7, fig.width=12, fig.fullwidth=TRUE}
-plots <- generate_and_save_plots(
-  taxonomy_dataset = taxonomy_dataset_filt, 
-  plot_base_name = "tax_filt_phyla_no_quality_", 
-  plot_params_list = plot_params_list, 
-  plot_function = plot_taxonomy_data,
-  filter_quality = NULL, 
-  filter_type = c("Positive")
-  )
+# plots <- generate_and_save_plots(
+#   taxonomy_dataset = taxonomy_dataset_filt, 
+#   plot_base_name = "tax_filt_phyla_no_quality_", 
+#   plot_params_list = plot_params_list, 
+#   plot_function = plot_taxonomy_data,
+#   filter_quality = NULL, 
+#   filter_type = c("Positive")
+#   )
 ```
 
 Filtered data, no quality filter, phylum level.
 ```{r plot_taxonomy_filtered_phyla_no_quality_all, fig.height=7, fig.width=12, fig.fullwidth=TRUE}
-plots <- generate_and_save_plots(
-  taxonomy_dataset = taxonomy_dataset_filt, 
-  plot_base_name = "tax_filt_phyla_no_quality_all_", 
-  plot_params_list = plot_params_list, 
-  plot_function = plot_taxonomy_data,
-  filter_quality = NULL, 
-  filter_type = NULL
-  )
+# plots <- generate_and_save_plots(
+#   taxonomy_dataset = taxonomy_dataset_filt, 
+#   plot_base_name = "tax_filt_phyla_no_quality_all_", 
+#   plot_params_list = plot_params_list, 
+#   plot_function = plot_taxonomy_data,
+#   filter_quality = NULL, 
+#   filter_type = NULL
+#   )
 ```
 
 
@@ -1499,12 +1499,12 @@ plots <- plot_tree_heaatmap(
 
 Unfiltered data, only negative samples.
 ```{r heatmap_unfiltered_negative, fig.height=7, fig.width=12, fig.fullwidth=TRUE}
-plots <- plot_tree_heaatmap(
-  counts = genome_counts,
-  plot_base_name = "tree_heatmap_unfilt_negative_",
-  plot_params_list = plot_params_list[1:7], # 1:7 because the rest do not include negatives
-  filter_type = c("NegativeMembrane", "NegativeCollection", "NegativeReaction")
-  )
+# plots <- plot_tree_heaatmap(
+#   counts = genome_counts,
+#   plot_base_name = "tree_heatmap_unfilt_negative_",
+#   plot_params_list = plot_params_list[1:7], # 1:7 because the rest do not include negatives
+#   filter_type = c("NegativeMembrane", "NegativeCollection", "NegativeReaction")
+#   )
 ```
 
 
@@ -1626,14 +1626,14 @@ plot_jitterplot <- function(taxonomy_data, plot_base_name, plot_params_list, tax
 
 Coverage filtered, positive samples, genome level
 ```{r jitterplot_filtered_positive_genome, fig.height=7, fig.width=12, fig.fullwidth=TRUE}
-plots <- plot_jitterplot(
-  taxonomy_data = taxonomy_dataset_filt, 
-  plot_base_name = "jitterplot_filt_genome_positive_", 
-  plot_params_list = plot_params_list,
-  taxon_level = 'genome',
-  filter_quality = NULL,
-  filter_type = c("Positive")
-  )
+# plots <- plot_jitterplot(
+#   taxonomy_data = taxonomy_dataset_filt, 
+#   plot_base_name = "jitterplot_filt_genome_positive_", 
+#   plot_params_list = plot_params_list,
+#   taxon_level = 'genome',
+#   filter_quality = NULL,
+#   filter_type = c("Positive")
+#   )
 ```
 
 Coverage filtered, positive samples, genus level
@@ -1650,14 +1650,14 @@ plots <- plot_jitterplot(
 
 Coverage filtered, positive samples, genus level, filter quality
 ```{r jitterplot_filtered_positive_genus_quality_4, fig.height=7, fig.width=12, fig.fullwidth=TRUE}
-plots <- plot_jitterplot(
-  taxonomy_data = taxonomy_dataset_filt, 
-  plot_base_name = "jitterplot_filt_genus_positive_quality", 
-  plot_params_list = plot_params_list,
-  taxon_level = 'genus',
-  filter_quality = 4,
-  filter_type = c("Positive")
-  )
+# plots <- plot_jitterplot(
+#   taxonomy_data = taxonomy_dataset_filt, 
+#   plot_base_name = "jitterplot_filt_genus_positive_quality", 
+#   plot_params_list = plot_params_list,
+#   taxon_level = 'genus',
+#   filter_quality = 4,
+#   filter_type = c("Positive")
+#   )
 ```
 Not-filtered, positive samples, genome level
 ```{r jitterplot_unfiltered_positive_genome, fig.height=7, fig.width=12, fig.fullwidth=TRUE}
@@ -1685,14 +1685,14 @@ plots <- plot_jitterplot(
 
 Not-filtered, negative controls, genome level
 ```{r jitterplot_unfiltered_negative_genome, fig.height=7, fig.width=12, fig.fullwidth=TRUE}
-plots <- plot_jitterplot(
-  taxonomy_data = taxonomy_dataset_unfilt, 
-  plot_base_name = "jitterplot_unfilt_genome_negative_", 
-  plot_params_list = plot_params_list[1:7], # 1:7 because the rest do not include negatives
-  taxon_level = 'genome',
-  filter_quality = NULL,
-  filter_type = c("NegativeMembrane", "NegativeCollection", "NegativeReaction")
-  )
+# plots <- plot_jitterplot(
+#   taxonomy_data = taxonomy_dataset_unfilt, 
+#   plot_base_name = "jitterplot_unfilt_genome_negative_", 
+#   plot_params_list = plot_params_list[1:7], # 1:7 because the rest do not include negatives
+#   taxon_level = 'genome',
+#   filter_quality = NULL,
+#   filter_type = c("NegativeMembrane", "NegativeCollection", "NegativeReaction")
+#   )
 ```
 
 Not-filtered, negative controls, genus level
