@@ -144,12 +144,27 @@ plot_alpha_diversity <- function(alpha_div_dataset, plot_base_name, plot_params_
       dpi = 300,
       limitsize = FALSE
     )
+    
+      ggsave(
+      filename = paste0("results/figures/alpha_diversity_plots/", plot_base_name, param_name, ".pdf"),
+      plot = plot,
+      device = "pdf",
+      width = 30,
+      height = 30,
+      units = "cm",
+      dpi = 300,
+      limitsize = FALSE
+    )
   }
 
+  
+  
   # Return the list of plots
   return(plots_list)
 }
 ```
+
+
 
 Coverage-filtered data, positive samples
 ```{r alpha_div_filt_pos, warning=FALSE, comments="", message=FALSE, fig.height=8, fig.width=10, fig.fullwidth=TRUE}

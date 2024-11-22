@@ -639,6 +639,17 @@ plot_jitterplot <- function(taxonomy_data, plot_base_name, plot_params_list, tax
       dpi = 300, 
       limitsize = FALSE
     )
+    
+    ggsave(
+      filename = paste0("results/figures/alpha_diversity_plots/", plot_base_name, param_name, ".pdf"),
+      plot = plot,
+      device = "pdf",
+      width = 30,
+      height = 30,
+      units = "cm",
+      dpi = 300,
+      limitsize = FALSE
+    )
   }
   # Return the list of plots
   return(plots_list)

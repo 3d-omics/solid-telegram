@@ -423,3 +423,117 @@ ggsave(
 <!-- # taxonomy_loadings -->
 <!-- ``` -->
 
+Extra plots
+```{r extraplots, warning=FALSE, comments="", message=FALSE, fig.height=7, fig.width=12, fig.fullwidth=TRUE}
+FAdata <- read.csv("data/FA_CSV.csv")
+ampure_data <- subset(FAdata, Beads == "AMPure")
+ampure_lmd_data <- subset(FAdata, Beads == "AMPure" & Type == "LMD")
+
+# Plot comparison for different adaptors using Boxplot
+plot_adaptors1 <- ggplot(ampure_lmd_data, aes(x = Adaptors, y = `ng.uL`, fill = Adaptors)) +
+  geom_boxplot(outlier.shape = NA) +  # This hides outliers to avoid duplication
+  geom_jitter(width = 0.2, size = 2, alpha = 0.6) +  # Adds jittered points
+  scale_fill_manual(values = c('#ffc273', '#e56969', '#c1558b')) +  # Custom colors
+  labs(title = "Comparison of Adaptors by ng/uL at 200-1000 bp",
+       x = "Adaptors", y = "ng/uL at 200-1000 bp") +
+  theme_minimal()+
+  custom_ggplot_theme
+
+print(plot_adaptors1)
+ggsave(
+      filename = paste0("results/figures/extra_plots/adaptors_ngmL.jpg"),
+      plot = plot_adaptors1,
+      device = "jpg",
+      width = 30,
+      height = 30,
+      units = "cm",
+      dpi = 300,
+      limitsize = FALSE
+    )
+
+# You can repeat similar plots for other metrics
+# E.g. for Avg. Size:
+plot_adaptors2 <- ggplot(ampure_lmd_data, aes(x = Adaptors, y = `X..Total`, fill = Adaptors)) +
+  geom_boxplot(outlier.shape = NA) +  # This hides outliers to avoid duplication
+  geom_jitter(width = 0.2, size = 2, alpha = 0.6) +  # Adds jittered points
+  scale_fill_manual(values = c('#ffc273', '#e56969', '#c1558b')) +  # Custom colors
+  labs(title = "Comparison of Adaptors by % of fragments in 200-1000 bp",
+       x = "Adaptors", y = "% of total fragments") +
+  theme_minimal()+
+  custom_ggplot_theme+
+  ylim(0, NA)
+
+print(plot_adaptors2)
+ggsave(
+      filename = paste0("results/figures/extra_plots/adaptors_pct.jpg"),
+      plot = plot_adaptors2,
+      device = "jpg",
+      width = 30,
+      height = 30,
+      units = "cm",
+      dpi = 300,
+      limitsize = FALSE
+    )
+
+
+```
+
+Extra plots 2
+```{r extraplots 2, warning=FALSE, comments="", message=FALSE, fig.height=7, fig.width=12, fig.fullwidth=TRUE}
+
+# Filter the data for LMD samples, AMPure or MagBio beads, and specific adaptors
+comparison_beads <- subset(FAdata, 
+                          Beads %in% c("AMPure", "MagBio") & 
+                          Type == "LMD" &
+                          Adaptors != "ULV2 UDI/UMI S02215")
+
+# Plot comparison for different bead types and adaptors
+plot_adaptors3 <- ggplot(comparison_beads, aes(x = Beads, y = `ng.uL`, fill = Beads)) +
+  geom_boxplot(outlier.shape = NA) +  # Hide outliers to avoid duplication
+  geom_jitter(width = 0.2, size = 2, alpha = 0.6) +  # Add jittered points
+  # facet_wrap(~ Adaptors) +  # Separate plots for each adaptor
+  scale_fill_manual(values = c('#8a49a1','#4f5bd5')) +  # Custom colors for beads
+  labs(title = "Comparison of AMPure vs MagBio Beads (LMD Samples, CeleroUDI & ULV2SI)",
+       x = "Bead Type", y = "ng/uL at 200-1000 bp") +
+  theme_minimal()+
+  custom_ggplot_theme
+
+print(plot_adaptors3)
+ggsave(
+      filename = paste0("results/figures/extra_plots/beads_ngml.jpg"),
+      plot = plot_adaptors3,
+      device = "jpg",
+      width = 30,
+      height = 30,
+      units = "cm",
+      dpi = 300,
+      limitsize = FALSE
+    )
+
+# Plot comparison for different bead types and adaptors
+plot_adaptors4 <- ggplot(comparison_beads, aes(x = Beads, y = `X..Total`, fill = Beads)) +
+  geom_boxplot(outlier.shape = NA) +  # Hide outliers to avoid duplication
+  geom_jitter(width = 0.2, size = 2, alpha = 0.6) +  # Add jittered points
+  # facet_wrap(~ Adaptors) +  # Separate plots for each adaptor
+  scale_fill_manual(values = c('#8a49a1','#4f5bd5')) +  # Custom colors for beads
+  labs(title = "Comparison of % of total fragments AMPure vs MagBio Beads (CeleroUDI & ULV2SI)",
+       x = "Bead Type", y = "% of total fragments") +
+  theme_minimal()+
+  custom_ggplot_theme+
+  ylim(0, NA)
+
+print(plot_adaptors4)
+ggsave(
+      filename = paste0("results/figures/extra_plots/beads_pct.jpg"),
+      plot = plot_adaptors4,
+      device = "jpg",
+      width = 30,
+      height = 30,
+      units = "cm",
+      dpi = 300,
+      limitsize = FALSE
+    )
+
+```
+
+

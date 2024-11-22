@@ -70,7 +70,6 @@ bacteria_mapping_files <- c(
 ```
 
 
-
 ### Define functions to load the statistics.
 At this step we choose the relevant rows and columns from the bioinformatics output. 
 
