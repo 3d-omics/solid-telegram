@@ -1,0 +1,549 @@
+# Data Import
+
+
+## Bacterial reads (counts) data
+Import the count tables from ERDA.
+All files were produced with Reference MAG catalogue 009.
+In the next version, we will fetch only one file with all the counts from all batches. And it might be a json file containing all needed tsv files.
+
+Questions:
+- MSEB0009 has a column 'undetermined'. Why? Answer: it comes from Novogene.
+
+There are more than one columns for each sample. 
+MSEB0006, MSEB0011, MSEB0012, MSEB0014, MSEB0015 - have no repetitions of samples
+MSEB0009 - some samples are there twice (reaching up to .lib2)
+MSEB0010 - some samples are there 6 or 7 times (reaching up to .lib6 or .lib7)
+Answer: it comes from Novogene resequencing those batches multiple times.
+
+Found it with:   
+group_by(genome, sample) %>%
+   count() %>%  # Get group sizes
+   group_by(n) %>%  # Group by the size of each group
+   summarise(frequency = n(), .groups = "drop")  # Count occurrences of each group size
+
+```{r load_count, message=FALSE, eval=FALSE, warning=FALSE, comments=""}
+read_counts <- read_tsv( "https://sid.erda.dk/share_redirect/G2guEHWh9v/results/quantify/coverm/coverm_genome_REF0009-mgg-pbdrep.count.tsv", show_col_types = FALSE) %>% # MSEB0006
+  left_join(read_tsv("https://sid.erda.dk/share_redirect/HiPNk7p4MG/results/quantify/coverm/coverm_genome_REF0009-mgg-pbdrep.count.tsv", show_col_types = FALSE), by = "sequence_id") %>% # MSEB0009
+  left_join(read_tsv("https://sid.erda.dk/share_redirect/cdU6P6sNuj/results/quantify/coverm/coverm_genome_REF0009-mgg-pbdrep.count.tsv", show_col_types = FALSE), by = "sequence_id") %>% # MSEB0010
+  left_join(read_tsv("https://sid.erda.dk/share_redirect/EUKYidpvOO/results/quantify/coverm/coverm_genome_REF0009-mgg-pbdrep.count.tsv", show_col_types = FALSE), by = "sequence_id") %>% # MSEB0011
+  left_join(read_tsv("https://sid.erda.dk/share_redirect/dEy2D1OmZi/results/quantify/coverm/coverm_genome_REF0009-mgg-pbdrep.count.tsv", show_col_types = FALSE), by = "sequence_id") %>% # MSEB0012
+  left_join(read_tsv("https://sid.erda.dk/share_redirect/B0E8AbA7Eu/results/quantify/coverm/coverm_genome_REF0009-mgg-pbdrep.count.tsv", show_col_types = FALSE), by = "sequence_id") %>% # MSEB0014
+  left_join(read_tsv("https://sid.erda.dk/share_redirect/hT3CftfSyw/results/quantify/coverm/coverm_genome_REF0009-mgg-pbdrep.count.tsv", show_col_types = FALSE), by = "sequence_id") %>% # MSEB0015
+  rename(genome = 1) %>% # rename first column to 'genome'
+  pivot_longer(!genome, names_to = "data", values_to = "counts") %>% # pivot to a long 2-column table (columns: data, counts)
+  mutate(sample = substr(data, 1, 7)) %>% # make new column ('sample') from column 'data', by keeping the first 7 characters - i.e. remove the .lib1 ending
+  filter(grepl("^M", sample)) %>% # filter to only keep microsamples starting from M (so, remove the 'undetermined' )
+  group_by(genome, sample) %>%
+  summarise(counts = sum(counts), .groups = "drop") %>% # sum counts from same genome-sample group (i.e. for MSEB0009 & MSEB0010)
+  pivot_wider(names_from = "sample", values_from = "counts") # make table wide again (i.e. columns become sample)
+```
+
+
+
+
+
+## Genome covered bases data
+Same comments & questions as for count tables!
+This is the document containing the number of nucleotide bases have been covered by at least one read in each sample and MAG. This information is used to calculate MAG coverage values.
+
+```{r load_hits, message=FALSE, eval=FALSE}
+genome_covered_bases <- read_tsv("https://sid.erda.dk/share_redirect/G2guEHWh9v/results/quantify/coverm/coverm_genome_REF0009-mgg-pbdrep.covered_bases.tsv", show_col_types = FALSE) %>% # MSEB0006
+  left_join(read_tsv("https://sid.erda.dk/share_redirect/HiPNk7p4MG/results/quantify/coverm/coverm_genome_REF0009-mgg-pbdrep.covered_bases.tsv", show_col_types = FALSE), by = "sequence_id") %>% # MSEB0009
+  left_join(read_tsv("https://sid.erda.dk/share_redirect/cdU6P6sNuj/results/quantify/coverm/coverm_genome_REF0009-mgg-pbdrep.covered_bases.tsv", show_col_types = FALSE), by = "sequence_id") %>% # MSEB0010
+  left_join(read_tsv("https://sid.erda.dk/share_redirect/EUKYidpvOO/results/quantify/coverm/coverm_genome_REF0009-mgg-pbdrep.covered_bases.tsv", show_col_types = FALSE), by = "sequence_id") %>% # MSEB0011
+  left_join(read_tsv("https://sid.erda.dk/share_redirect/dEy2D1OmZi/results/quantify/coverm/coverm_genome_REF0009-mgg-pbdrep.covered_bases.tsv", show_col_types = FALSE), by = "sequence_id") %>% # MSEB0012
+  left_join(read_tsv("https://sid.erda.dk/share_redirect/B0E8AbA7Eu/results/quantify/coverm/coverm_genome_REF0009-mgg-pbdrep.covered_bases.tsv", show_col_types = FALSE), by = "sequence_id") %>% # MSEB0014
+  left_join(read_tsv("https://sid.erda.dk/share_redirect/hT3CftfSyw/results/quantify/coverm/coverm_genome_REF0009-mgg-pbdrep.covered_bases.tsv", show_col_types = FALSE), by = "sequence_id") %>% # MSEB0015
+  rename(genome = 1) %>%
+  pivot_longer(!genome, names_to = "data", values_to = "counts") %>%
+  mutate(sample = substr(data, 1, 7)) %>%
+  group_by(genome, sample) %>%
+  summarise(counts = sum(counts), .groups = "drop") %>%
+  pivot_wider(names_from = "sample", values_from = "counts") %>% 
+  select(-Undeter)
+
+```
+
+
+
+## Genome (MAGs) metadata
+Relevant metadata of genomes is fetched from 2-3 files and merged into one genome metadata object for downstream analyses.
+
+The number of genomes in these files matches the number of genomes in the count tables. 
+So, I assume that Antton has downloaded/provided the files for REF0009. 
+But, I could not find the relevant files in ERDA>3D'omics>references>REF0009-mggp.
+
+### Genome (MAGs) taxonomy
+This is the raw taxonomy table generated by GTDBtk, which is simplified for downstream analyses.
+```{r load_taxonomy, message=FALSE, eval=FALSE}
+genome_taxonomy <- read_tsv("data/genome_taxonomy.tsv", show_col_types = FALSE) %>%
+  rename(genome = user_genome) %>% # rename first column
+  mutate(genome = str_replace_all(genome, "\\.fa", "")) %>% # remove .fa from the end of each genome name
+  separate(classification, c("domain", "phylum", "class", "order", "family", "genus", "species"), sep = ";") %>% # separate column 'classification' into columns for the different taxonomic levels
+  mutate(across(domain:species, ~ str_sub(., 4))) %>% # remove reduntant letters before taxon names
+  select(genome, domain, phylum, class, order, family, genus, species) %>% # select the relevant columns
+  arrange(match(genome, read_counts$genome)) # reorder the rows of taxonomy df based on the order of the read_counts df
+```
+
+### Genome (MAGs) quality
+Quality properties of the genomes. 
+```{r load_quality, message=FALSE, eval=FALSE}
+genome_quality <- read_tsv("data/genome_quality.tsv", show_col_types = FALSE) %>%
+  rename(genome = 1) %>% # rename first column
+  mutate(genome = str_replace_all(genome, "\\.fa", "")) %>% # remove .fa from the end of each genome name
+  arrange(match(genome, read_counts$genome)) %>% # reorder the rows of taxonomy df based on the order of the read_counts df
+  select(genome, Completeness, Contamination, Coding_Density, Genome_Size) %>% # select relevant columns
+  rename(completeness = Completeness, contamination = Contamination, coding_density = Coding_Density, length = Genome_Size) # rename columns
+```
+
+### Merged Genome (MAGs) taxonomy & quality
+Merge taxonomy, length and quality information
+```{r create_genomemetadata, message=FALSE, eval=FALSE}
+genome_metadata <- genome_taxonomy %>%
+  left_join(genome_quality, by = join_by(genome == genome)) # join quality
+```
+
+### Genome (MAGs) tree
+This is the raw tree generated by GTDBtk, which needs to be pruned to obtain the phylogenetic tree of the genomes. Note that the archaeal tree is only generated if any archaeans are detected among the genomes.
+```{r load_tree, message=FALSE, warning=FALSE, eval=FALSE}
+genome_tree <- read.tree("data/genome_tree.tre")
+genome_tree$tip.label <- str_replace_all(genome_tree$tip.label, "'", "") # remove single quotes in MAG names
+genome_tree <- keep.tip(genome_tree, tip = read_counts$genome) # keep only MAG tips
+```
+
+### Genome (MAGs) functional annotations
+This is the raw annotation table generated by DRAM, which is used to generate GIFT data using distillR.
+```{r load_annotations, message=FALSE, eval=FALSE}
+genome_annotations <- read_tsv("data/genome_annotations.tsv.xz", show_col_types = FALSE) %>%
+  rename(gene = 1, genome = 2)
+```
+
+### Distil functional annotations
+Raw functional annotations are distilled into genome-inferred functional traits to generate biologically more meaningful functional traits for downstream analyses.
+```{r distill_annotations, warning=FALSE, comments="", message=FALSE, results='hide', eval=FALSE}
+genome_gifts <- distill(genome_annotations, GIFT_db, genomecol = 2, annotcol = c(9, 10, 19))
+```
+
+
+
+
+
+## Sample metadata
+
+Import sample metadata from the airtable.
+```{r sample_metadata, message=FALSE, eval=FALSE}
+sample_metadata <- airtable("4-MSE-Info", "appKakM1bnKSekwuW") %>% # get base ID from Airtable browser URL
+  read_airtable(., fields = c(
+    "ID", "LabBatch_text", "IntestinalSection", "SampleType",
+    "Xcoord", "Ycoord", "SizeApprox", "cryosection_text", "buffer_text",
+    "Collection_Success", "Collection_attempts", "UsedCycles", "animal_temp", "Protocol_text",
+    "Collection_method_text"
+  ), id_to_col = TRUE) %>%
+  filter(LabBatch_text %in% c("MSEB0006", "MSEB0009", "MSEB0010", "MSEB0011", "MSEB0012", "MSEB0014", "MSEB0015")) %>%
+  rename(
+    batch = LabBatch_text,
+    microsample = ID,
+    section = IntestinalSection,
+    type = SampleType,
+    cryosection = cryosection_text,
+    buffer = buffer_text,
+    collection = Collection_Success,
+    collection_attempts = Collection_attempts,
+    cycles = UsedCycles,
+    animal = animal_temp,
+    size = SizeApprox,
+    protocol = Protocol_text,
+    collection_method = Collection_method_text
+  ) %>%
+  select(
+    microsample, section, type, batch,
+    cryosection, buffer, Xcoord, Ycoord,
+    size, collection, collection_attempts,
+    cycles, animal, protocol, collection_method
+  ) %>%
+  unnest(c(section, Xcoord, Ycoord, size, collection, cycles, collection_method)) %>%
+  mutate(size = factor(size, levels = c(500, 1500, 2500, 5000, 25000, 50000))) %>% 
+  mutate(type_simple = substr(type, 1, 1)) %>%
+  arrange(microsample)
+```
+
+
+
+
+
+
+
+
+
+
+## Sequencing statistics data
+For the analysis of different batches mapped to reference REF009, I define lists with the names of the files required for the statistics. 
+The files were produced by Jorge's bioinformatics pipeline (g_mg), and located in 3D'omics ERDA.
+Then, I import the relevant columns of each file with a loop, through a function.
+I use a function to avoid creating intermediate dataframes for each statistic. 
+I use all the functions at the end to create the general statistics table. 
+
+### Sequencing statistics before trimming
+Used the multiqc_fastqc.txt because the multiqc_general_stats.txt did not exist in all batches.
+```{r stats_before_trim_file_list, warning=FALSE, comments="", message=FALSE, eval=FALSE}
+stats_before_trim_file_list <- c(
+  "https://sid.erda.dk/share_redirect/G2guEHWh9v/reports/by_step/reads_data/multiqc_fastqc.txt", # MSEB0006
+  "https://sid.erda.dk/share_redirect/HiPNk7p4MG/reports/by_step/reads_data/multiqc_fastqc.txt", # MSEB0009
+  "https://sid.erda.dk/share_redirect/cdU6P6sNuj/reports/by_step/reads_data/multiqc_fastqc.txt", # MSEB0010
+  "https://sid.erda.dk/share_redirect/EUKYidpvOO/reports/by_step/reads_data/multiqc_fastqc.txt", # MSEB0011
+  "https://sid.erda.dk/share_redirect/dEy2D1OmZi/reports/by_step/reads_data/multiqc_fastqc.txt", # MSEB0012
+  "https://sid.erda.dk/share_redirect/B0E8AbA7Eu/reports/by_step/reads_data/multiqc_fastqc.txt", # MSEB0014
+  "https://sid.erda.dk/share_redirect/hT3CftfSyw/reports/by_step/reads_data/multiqc_fastqc.txt" # MSEB0015
+)
+```
+
+```{r stats_before_trim_load_function, warning=FALSE, comments="", message=FALSE, eval=FALSE}
+stats_before_trim_load_function <- function(file) {
+  read_tsv(file,
+    col_types = cols_only(
+      "Sample" = col_character(), # define the type of column (text, numbers, etc.)
+      "Total Sequences" = col_double(),
+      "%GC" = col_double(),
+      "total_deduplicated_percentage" = col_double()
+    ),
+    show_col_types = FALSE # ask R not to print out the type of each column
+  ) %>%
+    mutate(Sample = str_extract(Sample, "M\\d+")) %>% # extract sample name starting from "M" with numbers that follow M. Different names will turn to "'"NA"
+    rename( # rename columns
+      microsample = Sample,
+      total_sequences_before_trim = `Total Sequences`,
+      percent_gc_before_trim = `%GC`,
+      percent_unique_before_trim = total_deduplicated_percentage
+    ) %>%
+    select(microsample, total_sequences_before_trim, percent_gc_before_trim, percent_unique_before_trim)
+}
+```
+
+```{r stats_files_before_trim_load, warning=FALSE, comments="", message=FALSE, eval=FALSE}
+# apply the function to all files in the list, then bind all the tables together
+stats_before_trim <- bind_rows(lapply(stats_before_trim_file_list, stats_before_trim_load_function)) %>%
+  group_by(microsample) %>% # because there are at least two rows per sample in the multi_fastqc files.
+  summarise(
+    total_sequences_before_trim = sum(total_sequences_before_trim, na.rm = TRUE), # sum the no. of sequences in the rows of each sample
+    percent_gc_before_trim = mean(percent_gc_before_trim, na.rm = TRUE), # mean of GC% for the two rows. Only works when the no.of sequences is the same in the two rows -> Not accurate for samples that have been resequenced (MSEB0009 and MSEB0010)
+    percent_unique_before_trim = mean(percent_unique_before_trim, na.rm = TRUE) # mean of unique% for the two rows. Only works when the no.of sequences is the same in the two rows -> Not accurate for samples that have been resequenced (MSEB0009 and MSEB0010)
+  )
+```
+
+### Sequencing statistics after trimming
+```{r stats_after_trim_file_list, warning=FALSE, comments="", message=FALSE, eval=FALSE}
+stats_after_trim_file_list <- c(
+ "https://sid.erda.dk/share_redirect/G2guEHWh9v/reports/by_step/preprocess_data/multiqc_fastqc.txt", # MSEB0006
+ "https://sid.erda.dk/share_redirect/HiPNk7p4MG/reports/by_step/preprocess_data/multiqc_fastqc.txt", # MSEB0009
+ "https://sid.erda.dk/share_redirect/cdU6P6sNuj/reports/by_step/preprocess_data/multiqc_fastqc.txt", # MSEB0010
+ "https://sid.erda.dk/share_redirect/EUKYidpvOO/reports/by_step/preprocess_data/multiqc_fastqc.txt", # MSEB0011
+ "https://sid.erda.dk/share_redirect/dEy2D1OmZi/reports/by_step/preprocess_data/multiqc_fastqc.txt", # MSEB0012
+ "https://sid.erda.dk/share_redirect/B0E8AbA7Eu/reports/by_step/preprocess_data/multiqc_fastqc.txt", # MSEB0014 
+ "https://sid.erda.dk/share_redirect/hT3CftfSyw/reports/by_step/preprocess_data/multiqc_fastqc.txt" # MSEB0015
+)
+```
+
+```{r stats_after_trim_load_function, warning=FALSE, comments="", message=FALSE, eval=FALSE}
+stats_after_trim_load_function <- function(file) {
+  read_tsv(file,
+    col_types = cols_only(
+      "Sample" = col_character(), # define the type of column (text, numbers, etc.)
+      "Total Sequences" = col_double(),
+      "%GC" = col_double(),
+      "total_deduplicated_percentage" = col_double()
+    ),
+    show_col_types = FALSE # ask R not to print out the type of each column
+  ) %>%
+    mutate(Sample = str_extract(Sample, "M\\d+")) %>% # extract sample name starting from "M" with numbers that follow M. Different names will turn to "'"NA"
+    rename( # rename columns
+      microsample = Sample,
+      total_sequences_after_trim = `Total Sequences`,
+      percent_gc_after_trim = `%GC`,
+      percent_unique_after_trim = total_deduplicated_percentage
+    ) %>%
+    select(microsample, total_sequences_after_trim, percent_gc_after_trim, percent_unique_after_trim)
+}
+```
+
+```{r stats_files_after_trim_load, warning=FALSE, comments="", message=FALSE, eval=FALSE}
+# apply the function to all files in the list, then bind all the tables together
+stats_after_trim <- bind_rows(lapply(stats_after_trim_file_list, stats_after_trim_load_function)) %>%
+  group_by(microsample) %>% # because there are at least two rows per sample in the multi_fastqc files.
+  summarise(
+    total_sequences_after_trim = sum(total_sequences_after_trim, na.rm = TRUE), # sum the no. of sequences in the rows of each sample
+    percent_gc_after_trim = mean(percent_gc_after_trim, na.rm = TRUE), # mean of GC% for the two rows. Only works when the no.of sequences is the same in the two rows -> Not accurate for samples that have been resequenced (MSEB0009 and MSEB0010)
+    percent_unique_after_trim = mean(percent_unique_after_trim, na.rm = TRUE) # mean of unique% for the two rows. Only works when the no.of sequences is the same in the two rows -> Not accurate for samples that have been resequenced (MSEB0009 and MSEB0010)
+  )
+```
+
+Two rows are missing after trimming. Which ones?
+M300703 from MSEB0009
+M300723 from MSEB0010
+```{r failed_samples_after_trimming, warning=FALSE, comments="", message=FALSE, eval=FALSE}
+anti_join(stats_before_trim, stats_after_trim, by = "microsample")
+```
+
+### Non-bacterial mapped reads: human,chicken, swine 
+This is calculated on the trimmed reads. 
+The reads are mapped to 3 databases (1. human (GRCh38), 2. chicken (GRCg7b), 3. pig (Sscrofa11.1)) sequentially.
+From file 'multiqc_samtools_flagstat': 
+  To find the number of reads mapped to each reference you have to either
+  - sum the columns: 'mapped_passed' and 'singletons_passed' OR
+  - subtract the number of reads that entered the analysis (e.g. column 'total_passed' of human - from column 'total_passed' of chicken = reads mapped to human).
+  If you try both, these numbers should be equal. 
+After the final analysis, the plan is to get one count table with all these numbers (together with bacteria, and not mapped).
+```{r non_bacteria_mapping_files_list, warning=FALSE, comments="", message=FALSE, eval=FALSE}
+non_bacteria_mapping_files_list <- c(
+  "https://sid.erda.dk/share_redirect/G2guEHWh9v/reports/by_step/preprocess_data/multiqc_samtools_flagstat.txt", # MSEB0006
+  "https://sid.erda.dk/share_redirect/HiPNk7p4MG/reports/by_step/preprocess_data/multiqc_samtools_flagstat.txt", # MSEB0009
+  "https://sid.erda.dk/share_redirect/cdU6P6sNuj/reports/by_step/preprocess_data/multiqc_samtools_flagstat.txt", # MSEB0010
+  "https://sid.erda.dk/share_redirect/EUKYidpvOO/reports/by_step/preprocess_data/multiqc_samtools_flagstat.txt", # MSEB0011
+  "https://sid.erda.dk/share_redirect/dEy2D1OmZi/reports/by_step/preprocess_data/multiqc_samtools_flagstat.txt", # MSEB0012
+  "https://sid.erda.dk/share_redirect/B0E8AbA7Eu/reports/by_step/preprocess_data/multiqc_samtools_flagstat.txt", # MSEB0014
+  "https://sid.erda.dk/share_redirect/hT3CftfSyw/reports/by_step/preprocess_data/multiqc_samtools_flagstat.txt" # MSEB0015
+)
+```
+
+```{r non_bacteria_mapping_load_function, warning=FALSE, comments="", message=FALSE, eval=FALSE}
+non_bacteria_mapping_load_function <- function(file) {
+  read_tsv(file, show_col_types = FALSE) %>%
+    mutate(reference = case_when(
+      grepl("GRCh38", Sample, ignore.case = TRUE) ~ "human",
+      grepl("GRCg7b", Sample, ignore.case = TRUE) ~ "chicken",
+      grepl("Sscrofa11.1", Sample, ignore.case = TRUE) ~ "swine",
+      TRUE ~ NA_character_
+    )) %>%
+    mutate(
+      microsample = str_extract(Sample, "M\\d+"),
+      chicken_total_passed = ifelse(reference == "chicken", total_passed, NA_real_),
+      human_total_passed = ifelse(reference == "human", total_passed, NA_real_),
+      swine_total_passed = ifelse(reference == "swine", total_passed, NA_real_),
+      chicken_mapped_passed = ifelse(reference == "chicken", mapped_passed, NA_real_),
+      human_mapped_passed = ifelse(reference == "human", mapped_passed, NA_real_),
+      swine_mapped_passed = ifelse(reference == "swine", mapped_passed, NA_real_),
+      chicken_singletons_passed = ifelse(reference == "chicken", singletons_passed, NA_real_),
+      human_singletons_passed = ifelse(reference == "human", singletons_passed, NA_real_),
+      swine_singletons_passed = ifelse(reference == "swine", singletons_passed, NA_real_),
+      chicken_total_mapped = ifelse(reference == "chicken", mapped_passed + singletons_passed, NA_real_),
+      human_total_mapped = ifelse(reference == "human", mapped_passed + singletons_passed, NA_real_),
+      swine_total_mapped = ifelse(reference == "swine", mapped_passed + singletons_passed, NA_real_),
+      swine_unmapped = ifelse(reference == "swine", swine_total_passed - swine_total_mapped, NA_real_)
+    ) %>%
+    select(microsample,
+           chicken_total_passed, human_total_passed, swine_total_passed,
+           chicken_mapped_passed, human_mapped_passed, swine_mapped_passed,
+           chicken_singletons_passed, human_singletons_passed, swine_singletons_passed,
+           chicken_total_mapped, human_total_mapped, swine_total_mapped, swine_unmapped) %>%
+    group_by(microsample) %>%
+    summarise(across(starts_with("chicken_") | starts_with("human_") | starts_with("swine_"), sum, na.rm = TRUE))
+}
+```
+
+```{r stats_non_bacteria_mapping_load, warning=FALSE, comments="", message=FALSE, eval=FALSE}
+stats_non_bacteria_mapping <- bind_rows(lapply(non_bacteria_mapping_files_list, non_bacteria_mapping_load_function))
+```
+
+
+### Bacterial mapped reads
+This is calculated on the trimmed reads after filtering for human, chicken, and pig reads.
+'Unmapped reads' at this point are trimmed but not mapped to human, chicken, pig, or bacterial MAG catalogue.
+```{r bacteria_mapping_files_list, warning=FALSE, comments="", message=FALSE, eval=FALSE}
+bacteria_mapping_files_list <- c(
+  "https://sid.erda.dk/share_redirect/G2guEHWh9v/reports/by_step/quantify_data/multiqc_samtools_stats.txt", # MSEB0006
+  "https://sid.erda.dk/share_redirect/HiPNk7p4MG/reports/by_step/quantify_data/multiqc_samtools_stats.txt", # MSEB0009
+  "https://sid.erda.dk/share_redirect/cdU6P6sNuj/reports/by_step/quantify_data/multiqc_samtools_stats.txt", # MSEB0010
+  "https://sid.erda.dk/share_redirect/EUKYidpvOO/reports/by_step/quantify_data/multiqc_samtools_stats.txt", # MSEB0011
+  "https://sid.erda.dk/share_redirect/dEy2D1OmZi/reports/by_step/quantify_data/multiqc_samtools_stats.txt", # MSEB0012
+  "https://sid.erda.dk/share_redirect/B0E8AbA7Eu/reports/by_step/quantify_data/multiqc_samtools_stats.txt", # MSEB0014
+  "https://sid.erda.dk/share_redirect/hT3CftfSyw/reports/by_step/quantify_data/multiqc_samtools_stats.txt" # MSEB0015
+)
+```
+
+```{r bacteria_mapping_load_function, warning=FALSE, comments="", message=FALSE, eval=FALSE}
+bacteria_mapping_load_function <- function(file) {
+  read_tsv(file, show_col_types = FALSE) %>%
+    filter(str_detect(Sample, "mgg-pbdrep")) %>% #select samples mapped to REF0009-gg-pbdrep  database (i.e. NO 'salmonella' or 'chicken big mag')
+    mutate(
+      microsample = str_extract(Sample, "M\\d+"),
+      bacteria_total_passed = raw_total_sequences,
+      bacteria_total_mapped = reads_mapped,
+      unmapped = reads_unmapped
+    ) %>%
+    group_by(microsample) %>% 
+    summarise(
+      bacteria_total_passed = sum(bacteria_total_passed, na.rm = TRUE), # because some samples were sequence multiple times
+      bacteria_total_mapped = sum(bacteria_total_mapped, na.rm = TRUE),
+      unmapped = sum(unmapped, na.rm = TRUE)
+    ) %>%
+    select(microsample, bacteria_total_passed, bacteria_total_mapped, unmapped)
+}
+```
+
+```{r stats_bacteria_mapping_load, warning=FALSE, comments="", message=FALSE, eval=FALSE}
+stats_bacteria_mapping <- bind_rows(lapply(bacteria_mapping_files_list, bacteria_mapping_load_function))
+```
+
+Alternative way to estimate bacterial read counts (from count table):
+```{r stats_bacteria_mapping_alternative, warning=FALSE, comments="", message=FALSE, eval=FALSE}
+# Transpose the table
+stats_bacteria_mapping_alternative <- read_counts %>%
+  column_to_rownames(var = "genome") %>%  # Move genome names to rownames
+  t() %>%                                # Transpose the data
+  as.data.frame() %>%                    # Convert back to a data frame
+  rownames_to_column(var = "microsample") %>%     # Move sample names into a column
+  mutate(bacteria_total_read_counts = rowSums(select(., -microsample))) %>% # sum the counts of all genomes in each sample (i.e. sum of each row)
+  select(microsample, bacteria_total_read_counts)%>% # choose to show only the total_counts column
+  filter(grepl("^M", microsample)) # choose only microsamples starting with 'M' (i.e. not the 'undetermined')
+```
+
+### Combine relevant sequencing statistics
+```{r stats_combined, warning=FALSE, comments="", message=FALSE, eval=FALSE}
+stats_combined <- reduce(list(stats_before_trim, 
+                              stats_after_trim, 
+                              stats_non_bacteria_mapping, 
+                              stats_bacteria_mapping,
+                              stats_bacteria_mapping_alternative), full_join, by = "microsample") %>%
+  filter(grepl("^M", microsample))  %>%
+  mutate(removed_sequences_after_trim = total_sequences_before_trim - total_sequences_after_trim) %>%
+  select(microsample, 
+         total_sequences_before_trim, total_sequences_after_trim, removed_sequences_after_trim,
+         percent_gc_before_trim, percent_gc_after_trim,
+         percent_unique_before_trim, percent_unique_after_trim,
+         chicken_total_mapped, human_total_mapped, swine_total_mapped, 
+         bacteria_total_mapped, bacteria_total_read_counts, unmapped
+         )
+```
+
+Estimate some percentages - maybe this is not needed for plotting.
+Estimate the quality score of each sample, and add as a new column. 
+This is optional and will be updated with a better estimation of quality.
+```{r load_process_stats_files, warning=FALSE, comments="", message=FALSE, eval=FALSE}
+final_combined_stats <- stats_combined %>%
+  mutate(
+    trimmed_percentage = ((total_sequences_before_trim-total_sequences_after_trim)/total_sequences_before_trim)*100,
+    human_percentage = (human_total_mapped/total_sequences_after_trim)*100,
+    chicken_percentage = (chicken_total_mapped/total_sequences_after_trim)*100,
+    swine_percentage = (swine_total_mapped/total_sequences_after_trim)*100,
+    bacteria_percentage = (bacteria_total_mapped/total_sequences_after_trim)*100,
+    unmapped_percentage = (unmapped/total_sequences_after_trim)*100,
+    depth = ifelse(total_sequences_after_trim > 1000000, 1, 0),
+    duplicates = ifelse(percent_unique_after_trim > 30, 1, 0),
+    gc = ifelse(percent_gc_after_trim < 60, 1, 0),
+    human = ifelse(human_percentage < 5, 1, 0),
+    bacteria = ifelse(bacteria_percentage > 75, 1, 0),
+    quality = depth + duplicates + gc + human + bacteria
+  )
+```
+
+
+
+
+
+## Bacterial phyla color scheme data
+[AlberdiLab](www.alberdilab.dk) projects use unified color schemes developed for the [Earth Hologenome Initiative](www.earthhologenome.org), to facilitate figure interpretation.
+```{r get_ehi_colors, warning=FALSE, comments="", message=FALSE, eval=FALSE}
+phylum_colors <- read_tsv("https://raw.githubusercontent.com/earthhologenome/EHI_taxonomy_colour/main/ehi_phylum_colors.tsv", show_col_types = FALSE) %>%
+  mutate(phylum = gsub("^p__", "", phylum)) %>%
+  right_join(genome_metadata, by = join_by(phylum == phylum)) %>%
+  arrange(match(genome, genome_tree$tip.label)) %>%
+  select(phylum, colors) %>%
+  unique() %>%
+  arrange(phylum) %>%
+  pull(colors, name = phylum)
+```
+
+
+
+
+## Filter and normalise data
+Raw data needs to be filtered and normalised to make it useful for downstream analyses. 
+
+### Generate coverage table
+By dividing the number of base hits by the length of each genome, coverage values can be calculated.
+```{r calc_coverage, eval=FALSE}
+genome_coverage <- genome_covered_bases %>%
+  mutate(across(where(is.numeric), ~ . / genome_metadata$length))
+```
+
+### Coverage filtering
+Genomes that have less than 30% of their length covered by reads are turned into zeros to account for the random allocation of reads across genomes due to mapping heuristics. 
+```{r filter_coverage, eval=FALSE}
+min_coverage <- 0.3
+read_counts_filt_30 <- genome_coverage %>%
+  mutate(across(where(is.numeric), ~ ifelse(. > min_coverage, 1, 0))) %>% # turn entries of <0.3 to 0, keep the rest to 1
+  mutate(across(-1, ~ . * read_counts[[cur_column()]])) # to all columns except first (genomes), multiply read_counts with the number (0 or 1)
+
+
+min_coverage <- 0.2
+read_counts_filt_20 <- genome_coverage %>%
+  mutate(across(where(is.numeric), ~ ifelse(. > min_coverage, 1, 0))) %>% # turn entries of <0.3 to 0, keep the rest to 1
+  mutate(across(-1, ~ . * read_counts[[cur_column()]])) # to all columns except first (genomes), multiply read_counts with the number (0 or 1)
+
+
+min_coverage <- 0.1
+read_counts_filt_10 <- genome_coverage %>%
+  mutate(across(where(is.numeric), ~ ifelse(. > min_coverage, 1, 0))) %>% # turn entries of <0.3 to 0, keep the rest to 1
+  mutate(across(-1, ~ . * read_counts[[cur_column()]])) # to all columns except first (genomes), multiply read_counts with the number (0 or 1)
+
+min_coverage <- 0.05
+read_counts_filt_05 <- genome_coverage %>%
+  mutate(across(where(is.numeric), ~ ifelse(. > min_coverage, 1, 0))) %>% # turn entries of <0.3 to 0, keep the rest to 1
+  mutate(across(-1, ~ . * read_counts[[cur_column()]])) # to all columns except first (genomes), multiply read_counts with the number (0 or 1)
+
+```
+
+
+### Generate genome count table
+Read counts are transformed into genome counts using genome-length and read-length information.
+
+Explanation:
+Read counts are influenced by sequencing depth and genome size. Larger genomes will naturally attract more reads than smaller ones, even if their actual abundance is the same. By normalizing read counts to genome size, genome counts provide a size-independent estimate of how many genome copies (or organisms carrying that genome) are present in a sample.
+
+```{r calc_genometable, eval=FALSE}
+readlength <- 150 # change if sequencing read length is different
+
+# Reads without low-coverage filtering:
+genome_counts <- read_counts %>%
+  mutate(across(where(is.numeric), ~ . / (genome_metadata$length / readlength)))
+
+#Reads after filtering the low-coverage reads:
+genome_counts_filt_30 <- read_counts_filt_30 %>%
+  mutate(across(where(is.numeric), ~ . / (genome_metadata$length / readlength)))
+
+genome_counts_filt_20 <- read_counts_filt_20 %>%
+  mutate(across(where(is.numeric), ~ . / (genome_metadata$length / readlength)))
+
+genome_counts_filt_10 <- read_counts_filt_10 %>%
+  mutate(across(where(is.numeric), ~ . / (genome_metadata$length / readlength)))
+
+genome_counts_filt_05 <- read_counts_filt_05 %>%
+  mutate(across(where(is.numeric), ~ . / (genome_metadata$length / readlength)))
+
+```
+
+
+
+
+## Wrap working objects
+In the last step, the objects that are needed for downstream analyses are stored in an R object.
+```{r wrap_objects, eval=FALSE}
+save(genome_counts,
+  genome_counts_filt_30,
+  genome_counts_filt_20,
+  genome_counts_filt_10,
+  genome_counts_filt_05,
+  genome_tree,
+  genome_metadata,
+  genome_gifts,
+  sample_metadata,
+  phylum_colors,
+  final_combined_stats,
+  file = "data/data.Rdata"
+)
+```
+
+- **read_counts**: Number of reads mapped to each genome in each sample. Note this is the unfiltered and unnormalised raw community composition table.
+- **genome_counts**: Number of genomes quantified in each sample, calculated through filtering and normalising ***read_counts***. This is the community composition table to be used in downstream analyses unless otherwise stated.
+- **genome_tree**: Phylogenetic tree of the genomes, to be employed in downstream phylogenetic analyses.
+- **genome_metadata**: Taxonomic and quality information of the genomes.
+- **sample_metadata**: Treatment/population and other relevant metadata of the samples.

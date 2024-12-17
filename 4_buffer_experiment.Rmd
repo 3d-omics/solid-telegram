@@ -1,0 +1,639 @@
+# Lysis buffer trial (B11 vs B12)
+
+
+## Load data 
+Load the data produced in the previous chapters
+```{r load_stats_data, warning=FALSE, comments="", message=FALSE}
+# load("data/data.Rdata")
+load("data/plot_data.Rdata")
+```
+
+
+## Define plotting settings
+```{r custom_ggplot_theme, warning=FALSE, comments="", message=FALSE}
+custom_ggplot_theme <- theme(
+  strip.text.y.left = element_text(angle = 0),
+  strip.text.y.right = element_text(angle = 0),
+  axis.text = element_text(size = 10),
+  axis.title = element_text(size = 12, face = "bold"),
+  strip.background = element_rect(fill = "#dde3e9", color = "white", size = 0.8), # Custom facet strip background
+  strip.text = element_text(size = 8, face = "bold", color = "black"), # Custom facet text
+  strip.placement = "outside", # Place strip outside the panel grid
+  panel.spacing = unit(0.1, "lines"), # Adjust space between panels
+  panel.grid.major = element_line(color = "#dde3e9"), # Customize major grid lines
+  panel.grid.minor = element_blank(), # Remove minor grid lines
+  panel.background = element_rect(fill = "white"), # Change panel background color
+  plot.margin = unit(c(1, 1, 1, 1), "cm") # Adjust plot margins to ensure content fits
+)
+```
+
+
+
+## Setup filter conditions
+Use batches MSEB0006 (caecum) and MSEB0010 (colon), from the focal (adult) chicken. 
+For the colon, use the samples that were amplified with 15 PCR cycles instead of 19 (due to the latter's low quality).
+
+```{r plot_params_buffers, warning=FALSE, comments="", message=FALSE}
+plot_params_buffers <- list(
+  filter_conditions = list(
+    quote(section != "Ileum"),
+    quote(cycles < 16),
+    quote(batch == "MSEB0006" | batch == "MSEB0010")
+  ),
+  labels_title = "Lysis Buffer",
+  facet_formula = ". ~ section + type + buffer", #"batch + section + type ~ ."
+  scale_fill_manual_val = c('#ffdf9e','#ffc273'),
+  fill_var = "buffer",
+  plot_title = "Lysis Buffer trial"
+)
+
+plot_params <- plot_params_buffers
+```
+
+
+
+## Plots
+
+#### Reads that were removed by trimming, mapped to human, chicken, and swine, mapped to bacteria, and unmapped
+```{r plot_buffer_reads_1, warning=FALSE, comments="", message=FALSE, fig.height=10, fig.width=15}
+tidy_plot_data_stats_counts %>%
+  filter(!!!plot_params$filter_conditions) %>%
+  ggplot(aes(x = microsample, y = counts, fill = label)) +
+  geom_col() +
+  scale_fill_manual(values = color_palette_tidy_plot_data_stats_counts) +
+  labs(x = "Microsample",y = "Counts",fill = "Read type") +
+  facet_nested(. ~ section + type + buffer, scales = "free", space = "free", switch = "y") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  custom_ggplot_theme +
+  ggtitle("Number of reads removed by trimming & mapped to human, chicken, swine and bacteria & unmapped")
+
+tidy_plot_data_stats_counts %>%
+  filter(!!!plot_params$filter_conditions) %>%
+  ggplot(aes(x = microsample, y = counts, fill = label)) +
+  geom_col(position = "fill") +
+  scale_fill_manual(values = color_palette_tidy_plot_data_stats_counts) +
+  labs(x = "Microsample",y = "Counts",fill = "Read type") +
+  facet_nested(. ~ section + type + buffer, scales = "free", space = "free", switch = "y") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  custom_ggplot_theme +
+  ggtitle("Ratio of reads removed by trimming & mapped to human, chicken, swine and bacteria & unmapped")
+```
+
+#### Reads that were mapped to human, chicken, swine, and bacteria
+```{r plot_buffer_reads_2, warning=FALSE, comments="", message=FALSE, fig.height=10, fig.width=15}
+tidy_plot_data_stats_counts %>%
+  filter(mapping_status %in% c('bacteria_total_mapped',
+                               'chicken_total_mapped',
+                               'human_total_mapped',
+                               'swine_total_mapped')) %>%
+  filter(!!!plot_params$filter_conditions) %>%
+  ggplot(aes(x = microsample, y = counts, fill = label)) +
+  geom_col() +
+  scale_fill_manual(values = color_palette_tidy_plot_data_stats_counts) +
+  labs(x = "Microsample",y = "Counts",fill = "Read type") +
+  facet_nested(. ~ section + type + buffer, scales = "free", space = "free", switch = "y") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  custom_ggplot_theme +
+  ggtitle("Number of reads mapped to human, chicken, swine and bacteria")
+
+
+tidy_plot_data_stats_counts %>%
+  filter(mapping_status %in% c('bacteria_total_mapped',
+                               'chicken_total_mapped',
+                               'human_total_mapped',
+                               'swine_total_mapped')) %>%
+  filter(!!!plot_params$filter_conditions) %>%
+  ggplot(aes(x = microsample, y = counts, fill = label)) +
+  geom_col(position = "fill") +
+  scale_fill_manual(values = color_palette_tidy_plot_data_stats_counts) +
+  labs(x = "Microsample",y = "Counts",fill = "Read type") +
+  facet_nested(. ~ section + type + buffer, scales = "free", space = "free", switch = "y") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  custom_ggplot_theme +
+  ggtitle("Ratio of reads mapped to human, chicken, swine and bacteria")
+```
+### Reads mapped to bacteria
+```{r plot_buffer_reads_3, warning=FALSE, comments="", message=FALSE, fig.height=10, fig.width=15}
+plot_data_stats %>%
+  filter(!!!plot_params$filter_conditions) %>%
+  ggplot(aes(x = microsample, y = bacteria_total_mapped)) +
+  geom_col(fill = "#B92D65") +
+  facet_nested(. ~ section + type + buffer, scales = "free", space = "free", switch = "y") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  custom_ggplot_theme +
+  ggtitle("Number of reads mapped to bacteria")
+
+plot_data_stats %>%
+  filter(!!!plot_params$filter_conditions) %>%
+  ggplot(aes(x = microsample, y = bacteria_percentage)) +
+  geom_col(fill = "#B92D65") +
+  facet_nested(. ~ section + type + buffer, scales = "free", space = "free", switch = "y") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  custom_ggplot_theme +
+  ggtitle("Ratio of reads mapped to bacteria")
+
+tidy_plot_genome_counts %>%
+  filter(!!!plot_params$filter_conditions) %>%
+  ggplot(aes(x = microsample, y = count, fill = phylum)) +
+  geom_col(position = "fill") +
+  scale_fill_manual(values = phylum_colors[-4], drop = FALSE) +
+  labs(x = "Microsample",y = "Count", fill = "phylum") +
+  facet_nested(. ~ section + type + buffer, scales = "free", space = "free", switch = "y") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  custom_ggplot_theme +
+  ggtitle("Composition of bacterial phyla in the bacterial reads")
+
+plot_data_stats %>%
+  filter(!!!plot_params$filter_conditions) %>%
+  ggplot(aes(x = buffer, y = bacteria_total_mapped)) +
+  geom_boxplot(alpha = 1, fill = '#c1558b') +
+  facet_nested(. ~ section + type_simple + buffer, scales = "free", space = "free", switch = "y") +
+  custom_ggplot_theme +
+  scale_y_continuous(breaks = pretty(plot_data_stats$bacteria_total_mapped, n = 50)) +
+  ggtitle("Number of bacterial reads")
+```
+### Reads that did not map to any of the used references
+```{r plot_buffer_reads_4, warning=FALSE, comments="", message=FALSE, fig.height=10, fig.width=15}
+plot_data_stats %>%
+  filter(!!!plot_params$filter_conditions) %>%
+  ggplot(aes(x = microsample, y = unmapped)) +
+  geom_col(fill = "#8d98ae") +
+  facet_nested(. ~ section + type + buffer, scales = "free", space = "free", switch = "y") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  custom_ggplot_theme +
+  ggtitle("Number of unmapped reads")
+
+plot_data_stats %>%
+  filter(!!!plot_params$filter_conditions) %>%
+  ggplot(aes(x = microsample, y = unmapped_percentage)) +
+  geom_col(fill = "#8d98ae") +
+  facet_nested(. ~ section + type + buffer, scales = "free", space = "free", switch = "y") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  custom_ggplot_theme +
+  ggtitle("Ratio of unmapped reads")
+```
+
+
+```{r plot_buffer_reads_5, warning=FALSE, comments="", message=FALSE, fig.height=10, fig.width=15}
+tidy_plot_data_stats_before_after %>%
+  filter(!!!plot_params$filter_conditions) %>%
+  filter(section == 'Caecum right') %>%
+  ggplot(aes(x = Condition, y = total_sequences, fill = Condition)) +
+  geom_boxplot(alpha = 1) +
+  facet_nested(. ~ section + type + buffer, scales = "free", space = "free", switch = "y") +
+  custom_ggplot_theme +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  scale_y_continuous(breaks = pretty(tidy_plot_data_stats_before_after$total_sequences, n = 30)) +
+  ggtitle("Number of reads before and after trimming")
+
+tidy_plot_data_stats_before_after %>%
+  filter(!!!plot_params$filter_conditions) %>%
+  filter(section == 'Colon') %>%
+  ggplot(aes(x = Condition, y = total_sequences, fill = Condition)) +
+  geom_boxplot(alpha = 1) +
+  facet_nested(. ~ section + type + buffer, scales = "free", space = "free", switch = "y") +
+  custom_ggplot_theme +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  scale_y_continuous(breaks = pretty(tidy_plot_data_stats_before_after$total_sequences, n = 80)) +
+  ggtitle("Number of reads before and after trimming")
+```
+
+```{r plot_buffer_gc_1, warning=FALSE, comments="", message=FALSE, fig.height=10, fig.width=15}
+tidy_plot_data_stats_before_after %>%
+  filter(!!!plot_params$filter_conditions) %>%
+  filter(section == 'Caecum right') %>%
+  ggplot(aes(x = Condition, y = percent_gc, fill = Condition)) +
+  geom_boxplot(alpha = 1) +
+  facet_nested(. ~ section + type + buffer, scales = "free", space = "free", switch = "y") +
+  custom_ggplot_theme +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  scale_y_continuous(limits = c(10, 90),breaks = seq(10, 90, by = 5)) +
+  ggtitle("% GC before and after trimming")
+
+# Combined Histogram & density plot
+tidy_plot_data_stats_before_after %>%
+  filter(!!!plot_params$filter_conditions) %>%
+  filter(section == 'Caecum right') %>%
+  ggplot(aes(x = percent_gc, y = ..density.., fill = Condition)) +
+  geom_histogram(binwidth = 0.4, position = "identity", alpha = 0.5) +
+  geom_density(alpha = 0.6) +
+  facet_grid(buffer ~ type_simple, scale = "free") +
+  geom_vline(xintercept = 50, color = "black", size = 0.5) +
+  scale_x_continuous(limits = c(10, 90),breaks = seq(10, 90, by = 5)) +
+  ggtitle("Shift in GC% with trimming - Caecum")
+
+
+tidy_plot_data_stats_before_after %>%
+  filter(!!!plot_params$filter_conditions) %>%
+  filter(section == 'Colon') %>%
+  ggplot(aes(x = Condition, y = percent_gc, fill = Condition)) +
+  geom_boxplot(alpha = 1) +
+  facet_nested(. ~ section + type + buffer, scales = "free", space = "free", switch = "y") +
+  custom_ggplot_theme +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +  
+  scale_y_continuous(limits = c(10, 90),breaks = seq(10, 90, by = 5)) +
+  ggtitle("% GC before and after trimming")
+
+# Combined Histogram & density plot
+tidy_plot_data_stats_before_after %>%
+  filter(!!!plot_params$filter_conditions) %>%
+  filter(section == 'Colon') %>%
+  ggplot(aes(x = percent_gc, y = ..density.., fill = Condition)) +
+  geom_histogram(binwidth = 0.4, position = "identity", alpha = 0.5) +
+  geom_density(alpha = 0.6) +
+  facet_grid(buffer ~ type_simple, scale = "free") +
+  geom_vline(xintercept = 50, color = "black", size = 0.5) +
+  scale_x_continuous(
+    limits = c(10, 90),
+    breaks = seq(10, 90, by = 5)) +
+  ggtitle("Shift in GC% with trimming - Colon")
+
+# Histogram
+# tidy_plot_data_stats_before_after %>%
+#   filter(!!!plot_params$filter_conditions) %>%
+#   ggplot(aes(x = percent_gc, fill = Condition)) +
+#   geom_histogram(binwidth = 0.5, position = "identity", alpha = 0.7) +
+#   facet_grid(buffer ~ type_simple, scale = "free") +
+#   xlim(10, 90) +
+#   geom_vline(xintercept = 50)+
+#   ggtitle("Shift in GC% with trimming")
+# 
+
+# Density plot
+# tidy_plot_data_stats_before_after %>%
+#   filter(!!!plot_params$filter_conditions) %>%
+#   ggplot(aes(x = percent_gc, fill = Condition)) +
+#   geom_density(alpha=0.7) +
+#   facet_grid(buffer ~ type_simple, scale = "free") +
+#   xlim(10, 90) +
+#   geom_vline(xintercept = 50)+
+#   ggtitle("Shift in GC% with trimming")
+```
+
+```{r plot_buffer_dp_1, warning=FALSE, comments="", message=FALSE, fig.height=10, fig.width=15}
+tidy_plot_data_stats_before_after %>%
+  filter(!!!plot_params$filter_conditions) %>%
+  filter(section == 'Caecum right') %>%
+  ggplot(aes(x = Condition, y = percent_unique, fill = Condition)) +
+  geom_boxplot(alpha = 1) +
+  facet_nested(. ~ section + type + buffer, scales = "free", space = "free", switch = "y") +
+  custom_ggplot_theme +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  scale_y_continuous(limits = c(0, 100),breaks = seq(0, 100, by = 5)) +
+  ggtitle("% unique seq before and after trimming")
+
+# Combined Histogram & density plot
+tidy_plot_data_stats_before_after %>%
+  filter(!!!plot_params$filter_conditions) %>%
+  filter(section == 'Caecum right') %>%
+  ggplot(aes(x = percent_unique, y = ..density.., fill = Condition)) +
+  geom_histogram(binwidth = 0.4, position = "identity", alpha = 0.5) +
+  geom_density(alpha = 0.6) +
+  facet_grid(buffer ~ type_simple, scale = "free") +
+  geom_vline(xintercept = 50, color = "black", size = 0.5) +
+  scale_x_continuous(limits = c(0, 100), breaks = seq(0, 100, by = 5)) +
+  ggtitle("Shift in unique seq % with trimming - Caecum")
+
+
+tidy_plot_data_stats_before_after %>%
+  filter(!!!plot_params$filter_conditions) %>%
+  filter(section == 'Colon') %>%
+  ggplot(aes(x = Condition, y = percent_unique, fill = Condition)) +
+  geom_boxplot(alpha = 1) +
+  facet_nested(. ~ section + type + buffer, scales = "free", space = "free", switch = "y") +
+  custom_ggplot_theme +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  scale_y_continuous(limits = c(0, 100),breaks = seq(0, 100, by = 5)) +
+  ggtitle("% unique seq before and after trimming")
+
+# Combined Histogram & density plot
+tidy_plot_data_stats_before_after %>%
+  filter(!!!plot_params$filter_conditions) %>%
+  filter(section == 'Colon') %>%
+  ggplot(aes(x = percent_unique, y = ..density.., fill = Condition)) +
+  geom_histogram(binwidth = 0.4, position = "identity", alpha = 0.5) +
+  geom_density(alpha = 0.6) +
+  facet_grid(buffer ~ type_simple, scale = "free") +
+  geom_vline(xintercept = 50, color = "black", size = 0.5) +
+  scale_x_continuous(limits = c(0, 100), breaks = seq(0, 100, by = 5)) +
+  ggtitle("Shift in unique seq % with trimming - Colon")
+```
+
+```{r plot_buffer_diversity_1, warning=FALSE, comments="", message=FALSE, fig.height=10, fig.width=15}
+tidy_plot_alpha_diversity_genomes %>%
+  filter(filter_level == 'unfiltered') %>%
+  filter(!!!plot_params$filter_conditions) %>%
+  filter(section == 'Caecum right') %>%
+  ggplot(aes(x = buffer, y = value, color = bacteria_percentage)) +
+  scale_color_gradient(low = "#c90076", high = "#3598bf", name = "bacteria percentage", limits = c(0, 100)) +
+  geom_boxplot(outlier.shape = NA) +
+      geom_jitter(width = 0.2, alpha = 0.7) +
+  facet_nested(metric ~ section + type_simple + buffer, scales = "free", space = "fixed") +
+  theme_minimal() +
+  custom_ggplot_theme +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  ggtitle("Alpha diversity - not filtered")
+
+
+tidy_plot_alpha_diversity_genomes %>%
+  filter(filter_level == 'filtered_05') %>%
+  filter(!!!plot_params$filter_conditions) %>%
+  filter(section == 'Caecum right') %>%
+  ggplot(aes(x = buffer, y = value, color = bacteria_percentage)) +
+  scale_color_gradient(low = "#c90076", high = "#3598bf", name = "bacteria percentage", limits = c(0, 100)) +
+  geom_boxplot(outlier.shape = NA) +
+      geom_jitter(width = 0.2, alpha = 0.7) +
+  facet_nested(metric ~ section + type_simple + buffer, scales = "free", space = "fixed") +
+  theme_minimal() +
+  custom_ggplot_theme +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  ggtitle("Alpha diversity - genomes filtered at 5% coverage")
+
+
+tidy_plot_alpha_diversity_genomes %>%
+  filter(!!!plot_params$filter_conditions) %>%
+  filter(section == 'Caecum right') %>%
+  ggplot(aes(x = buffer, y = value, color = bacteria_percentage)) +
+  scale_color_gradient(low = "#c90076", high = "#3598bf", name = "bacteria percentage", limits = c(0, 100)) +
+  geom_boxplot(outlier.shape = NA) +
+      geom_jitter(width = 0.2, alpha = 0.7) +
+  facet_nested(metric ~ section + type_simple + buffer + filter_level, scales = "free", space = "fixed") +
+  theme_minimal() +
+  custom_ggplot_theme +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  ggtitle("Alpha diversity - 5 coverage filtering levels")
+
+```
+
+```{r plot_buffer_diversity_2, warning=FALSE, comments="", message=FALSE, fig.height=10, fig.width=15}
+tidy_plot_alpha_diversity_genomes %>%
+  filter(filter_level == 'unfiltered') %>%
+  filter(!!!plot_params$filter_conditions) %>%
+  filter(section == 'Colon') %>%
+  ggplot(aes(x = buffer, y = value, color = bacteria_percentage)) +
+  scale_color_gradient(low = "#c90076", high = "#3598bf", name = "bacteria percentage", limits = c(0, 100)) +
+  geom_boxplot(outlier.shape = NA) +
+      geom_jitter(width = 0.2, alpha = 0.7) +
+  facet_nested(metric ~ section + type_simple + buffer, scales = "free", space = "fixed") +
+  theme_minimal() +
+  custom_ggplot_theme +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  ggtitle("Alpha diversity - not filtered")
+
+
+tidy_plot_alpha_diversity_genomes %>%
+  filter(filter_level == 'filtered_05') %>%
+  filter(!!!plot_params$filter_conditions) %>%
+  filter(section == 'Colon') %>%
+  ggplot(aes(x = buffer, y = value, color = bacteria_percentage)) +
+  scale_color_gradient(low = "#c90076", high = "#3598bf", name = "bacteria percentage", limits = c(0, 100)) +
+  geom_boxplot(outlier.shape = NA) +
+      geom_jitter(width = 0.2, alpha = 0.7) +
+  facet_nested(metric ~ section + type_simple + buffer, scales = "free", space = "fixed") +
+  theme_minimal() +
+  custom_ggplot_theme +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  ggtitle("Alpha diversity - genomes filtered at 5% coverage")
+
+
+tidy_plot_alpha_diversity_genomes %>%
+  filter(!!!plot_params$filter_conditions) %>%
+  filter(section == 'Colon') %>%
+  ggplot(aes(x = buffer, y = value, color = bacteria_percentage)) +
+  scale_color_gradient(low = "#c90076", high = "#3598bf", name = "bacteria percentage", limits = c(0, 100)) +
+  geom_boxplot(outlier.shape = NA) +
+      geom_jitter(width = 0.2, alpha = 0.7) +
+  facet_nested(metric ~ section + type_simple + buffer + filter_level, scales = "free", space = "fixed") +
+  theme_minimal() +
+  custom_ggplot_theme +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  ggtitle("Alpha diversity - 5 coverage filtering levels")
+```
+
+
+
+check also how many of the filtered samples (when we do the filtering) belong to each group
+
+```{r plot_buffer_diversity_3, warning=FALSE, comments="", message=FALSE, fig.height=10, fig.width=15}
+# Histogram
+tidy_plot_alpha_diversity_genomes %>%
+  filter(!!!plot_params$filter_conditions) %>%
+  filter(metric == 'richness') %>%
+  ggplot(aes(x = value, fill = filter_level)) +
+  geom_histogram(binwidth = 4, position = "identity", alpha = 0.5) +
+  facet_grid(section ~ type_simple + buffer, scales = "fixed", space = "fixed") +
+  scale_y_continuous(limits = c(0, 20),breaks = seq(0, 20, by = 1)) +
+  theme_minimal() +
+  custom_ggplot_theme +
+  ggtitle("Histogram: Samples based on their number of genomes depending on coverage filtering")
+
+# Combined Histogram & density plot
+tidy_plot_alpha_diversity_genomes %>%
+  filter(!!!plot_params$filter_conditions) %>%
+  filter(metric == 'richness') %>%
+  ggplot(aes(x = value, y = ..density.., fill = filter_level)) +
+  geom_histogram(binwidth = 4, position = "identity", alpha = 0.5) +
+  geom_density(alpha = 0.6) +
+  facet_grid(section ~ type_simple + buffer, scale = "free") +
+  theme_minimal() +
+  custom_ggplot_theme +
+  ggtitle("Density & Histogram: Samples based on their number of genomes depending on coverage filtering")
+
+tidy_plot_alpha_diversity_genomes %>%
+  filter(!!!plot_params$filter_conditions) %>%
+  filter(metric == 'richness') %>%
+  filter(value >0) %>%
+  ggplot(aes(x = filter_level, fill = type)) +
+  geom_bar() +   
+  facet_grid(section ~ buffer, scale = "free") +
+  theme_minimal() +
+  custom_ggplot_theme +
+  ggtitle("Number of samples with at least 1 genome present")
+
+```
+
+```{r plot_buffer_community_1, warning=FALSE, comments="", message=FALSE, fig.height=10, fig.width=15}
+tidy_plot_genome_counts %>%
+  filter(!!!plot_params$filter_conditions) %>%
+  ggplot(aes(x = microsample, y = count, fill = phylum)) +
+  geom_col(position = "fill", colour = "white", linewidth = 0.1) +
+  scale_fill_manual(values = phylum_colors[-4], drop = FALSE) +
+  facet_nested(. ~ section + type + buffer, scales = "free", space = "free", switch = "y") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  custom_ggplot_theme +
+  ggtitle("Composition of bacterial phyla in the bacterial reads")
+```
+
+
+```{r plot_buffer_community_2, warning=FALSE, comments="", message=FALSE, fig.height=10, fig.width=15}
+# Calculate total abundance for each phylum
+phylum_order <- tidy_plot_genome_counts %>%
+  filter(!!!plot_params$filter_conditions) %>%
+  group_by(phylum) %>%
+  summarise(total_abundance = sum(count, na.rm = TRUE), .groups = "drop") %>%
+  arrange(total_abundance) %>%
+  pull(phylum) # Extract the ordered phylum names
+
+# Convert 'phylum' to a factor with levels ordered by abundance
+community_composition <- tidy_plot_genome_counts %>%
+  filter(!!!plot_params$filter_conditions) %>%
+  mutate(phylum = factor(phylum, levels = phylum_order))
+
+community_composition %>%
+  ggplot(aes(x = microsample, y = count, fill = phylum)) +
+  geom_col(position = "fill") +
+  scale_fill_manual(values = phylum_colors[-4], drop = FALSE) +
+  facet_nested(. ~ section + type + buffer, scales = "free", space = "free", switch = "y") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  custom_ggplot_theme +
+  ggtitle("Composition of bacterial phyla in the bacterial reads")
+```
+
+NB! Colours & order not finished!!
+```{r plot_buffer_community_3, warning=FALSE, comments="", message=FALSE, fig.height=10, fig.width=15}
+# tidy_plot_genome_counts %>%
+#   filter(!!!plot_params$filter_conditions) %>%
+#   group_by(microsample, class) %>%
+#   summarise(total_count = sum(count, na.rm = TRUE),
+#             across(where(is.character), ~ first(.)),
+#             .groups = "drop") %>%
+#   ggplot(aes(x = microsample, y = total_count, fill = class)) +
+#   geom_bar(stat = "identity", position = "stack") +
+#   facet_nested(. ~ section + type + buffer, scales = "free", space = "free", switch = "y") +
+#   theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+#   custom_ggplot_theme 
+```
+
+
+### Genus level plot
+
+
+NB! Colours & order not finished!!
+
+NB! This will be changed!
+```{r generate_shades_function, warning=FALSE, comments="", message=FALSE}
+generate_shades <- function(base_color, n) {
+  # Generate 'n' shades from the base color to a lighter version (not white)
+  colorRampPalette(colors = c(scales::muted(base_color, l = 30), base_color))(n)
+}
+```
+
+Function to generate plots based on taxonomy data and plot parameters. 
+```{r plot_buffer_community_4, warning=FALSE, comments="", message=FALSE, fig.height=10, fig.width=15}
+# Calculate total abundance for each phylum
+phylum_order <- tidy_plot_genome_counts %>%
+  filter(!!!plot_params$filter_conditions) %>%
+  group_by(phylum) %>%
+  summarise(total_abundance = sum(count, na.rm = TRUE), .groups = "drop") %>%
+  arrange(total_abundance) %>%
+  pull(phylum) # Extract the ordered phylum names
+
+# Convert 'phylum' to a factor with levels ordered by abundance
+filtered_data <- tidy_plot_genome_counts %>%
+  filter(!!!plot_params$filter_conditions) %>%
+    group_by(microsample, genus) %>%
+    summarise(total_count = sum(count, na.rm = TRUE),
+            across(where(is.character), ~ first(.)),
+            .groups = "drop") %>%
+  mutate(phylum = factor(phylum, levels = phylum_order))
+
+# Create an ordered factor for genus within each phylum by abundance
+filtered_data <- filtered_data %>%
+  group_by(phylum, genus) %>%
+  summarise(genus_abundance = sum(total_count, na.rm = TRUE), .groups = "drop") %>%
+  arrange(phylum, desc(genus_abundance)) %>%
+  mutate(genus_order = factor(genus, levels = unique(genus))) %>%
+  select(phylum, genus, genus_order) %>%
+  right_join(filtered_data, by = c("phylum", "genus")) %>% # Rejoin to original filtered data
+  mutate(
+    genus_for_plot = genus_order, # Use the ordered factor for plotting
+    genus_label = as.character(genus)) %>% # Keep original genus names for labeling
+  select(-genus_order)
+
+# Calculate total abundance for each genus across all phyla
+genus_abundance <- filtered_data %>%
+  group_by(genus) %>%
+  summarise(total_abundance = sum(total_count, na.rm = TRUE), .groups = "drop") %>%
+  arrange(desc(total_abundance))
+
+# Get the top 'n' genera by overall abundance
+top_genera <- genus_abundance %>%
+  slice_head(n = 10) %>%
+  pull(genus)
+
+filtered_data <- filtered_data %>%
+    mutate(genus_color = ifelse(genus %in% top_genera, as.character(phylum), "Other"), 
+           genus_label = ifelse(genus %in% top_genera, paste(genus, "(", phylum, ")"), "Other"))
+
+# Reorder 'genus_label' factor by genus abundance, using cleaned phylum names for display
+filtered_data <- filtered_data %>%
+  mutate(genus_label = factor(genus_label,levels = c(paste(sub("^g__", "", top_genera), "(", sub("^p__", "", filtered_data$phylum[match(top_genera, filtered_data$genus)]), ")"), "Other")
+))
+
+# Prepare the phylum colors
+phylum_colors_named <- phylum_colors#[-4]
+names(phylum_colors_named) <- levels(filtered_data$phylum)
+
+# Generate color mapping for each genus within its phylum
+color_mapping <- c()
+for (phylum in unique(filtered_data$phylum)) {
+  phylum_data <- filtered_data %>%
+    filter(phylum == !!phylum & genus_label != "Other") %>%
+    distinct(genus_label)
+
+  n_genera <- nrow(phylum_data)
+  phylum_color <- phylum_colors_named[phylum]
+
+  if (n_genera > 0) {
+    # Generate shades for each genus
+    phylum_shades <- generate_shades(phylum_color, n_genera)
+    names(phylum_shades) <- phylum_data$genus_label
+    color_mapping <- c(color_mapping, phylum_shades)
+  }
+}
+
+# Add grey color for 'Other' category
+color_mapping["Other"] <- "grey"
+
+# Generate the plot
+ggplot(filtered_data, aes(x = microsample, y = total_count, fill = genus_label, group = interaction(phylum, genus_for_plot))) +
+  geom_bar(stat = "identity", colour = "white", linewidth = 0.05) + # Stacked bars with white borders
+  scale_fill_manual(values = color_mapping, drop = FALSE) + # Use manual color scale
+  custom_ggplot_theme +
+  facet_nested(. ~ section + type + buffer, scales = "free", space = "free", switch = "y") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  custom_ggplot_theme +
+  ggtitle("Composition of bacterial phyla in the bacterial reads")
+
+```
+
+```{r plot_buffer_community_jitterplot, warning=FALSE, comments="", message=FALSE, fig.height=15, fig.width=15}
+# Summarise relabun but keep only the grouping columns
+filtered_data <- tidy_plot_genome_counts %>%
+  filter(!!!plot_params$filter_conditions) %>%
+  filter(type == 'Positive') %>%
+  group_by(microsample, phylum, genus) %>%
+  summarise(relabun = sum(count), ,
+            across(where(is.character), ~ first(.)),
+            .groups = 'drop')
+
+summary <- filtered_data %>%
+  group_by(genus) %>%
+  summarise(mean = geometric.mean(relabun, na.rm = T)) %>% #geometric mean because it is a %
+  arrange(-mean)
+
+# Reorder taxon_level based on the summary
+filtered_data %>%
+  mutate(genus = factor(genus, levels = rev(summary %>% pull(genus))))  %>%
+  ggplot(aes(x = relabun, y = genus, group = genus, color = phylum)) +
+    scale_color_manual(values = phylum_colors) +
+    geom_jitter(alpha = 0.3, size=0.5) +
+    facet_nested(. ~ section + type + buffer, scales = "free", space = "free", switch = "y") +
+    theme_minimal() +
+    custom_ggplot_theme + 
+    scale_x_continuous(limits = c(0, 1))
+
+```
+
+
+

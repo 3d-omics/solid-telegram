@@ -1,0 +1,352 @@
+# List of experiments
+Define lists that contain the plot settings for different experiments
+
+
+### B11 vs B12 lysis buffers
+Compare buffer B11 and B12.
+Use batches MSEB0006 (caecum) and MSEB0010 (colon), from the focal (adult) chicken. 
+For the colon, use the samples that were amplified with 15 PCR cycles instead of 19 (due to the latter's low quality).
+```{r data_set_buffers, warning=FALSE, comments="", message=FALSE}
+plot_params_buffers <- list(
+  filter_conditions = list(
+    quote(section != "Ileum"),
+    quote(cycles < 16),
+    quote(batch == "MSEB0006" | batch == "MSEB0010")
+  ),
+  labels_title = "Lysis Buffer",
+  facet_formula = ". ~ section + type + buffer", #"batch + section + type ~ ."
+  scale_fill_manual_val = c('#ffdf9e','#ffc273'),
+  fill_var = "buffer",
+  plot_title = "Lysis Buffer trial"
+)
+```
+
+#### 15 vs 19 PCR cycles
+Use the colon samples (MSEB0010). Maybe separate by buffer??
+```{r data_set_cycles, message=FALSE, warning=FALSE, comments=""}
+plot_params_cycles <- list(
+  filter_conditions = list(
+    quote(batch == "MSEB0010")
+  ),
+  labels_title = "PCR cycles",
+  facet_formula = "section + type + cycles ~ .", # "batch + section + type ~ ."
+  scale_fill_manual_val = c('#ffc273','#e56969'),
+  fill_var = "factor(cycles)",
+  plot_title = "PCR cycles trial"
+)
+```
+
+#### Limit of detection trial: Different LMD sizes
+Use batch MSEB0014 (caecum). 
+```{r data_set_LOD, warning=FALSE, comments="", message=FALSE}
+plot_params_LOD <- list(
+  filter_conditions = list(
+    quote(batch == "MSEB0014")
+  ),
+  labels_title = "LMD size",
+  facet_formula = "type + size ~ .", #"batch + section + type + cryosection ~ ."
+  scale_fill_manual_val = c('#ffdf9e','#ffc273','#e56969','#c1558b','#8a49a1','#4f5bd5'),
+  fill_var = "factor(size, levels = c(500, 1500, 2500, 5000, 25000, 50000))",
+  plot_title = "Limit of detection (LMD size)"
+)
+```
+
+#### Automation trial
+Compare library prep with DreamPrep (MSEB0015) vs manual (MSEB0011) for ceacum of focal chicken
+```{r data_set_automation, warning=FALSE, comments="", message=FALSE}
+plot_params_automation <- list(
+  filter_conditions = list(
+    quote(batch == "MSEB0011"|batch == "MSEB0015"), 
+    quote(animal == 'G121e')
+  ),
+  labels_title = "Automation",
+  facet_formula = "batch + type + cryosection ~ .", #"batch + section + type + cryosection ~ ."
+  scale_fill_manual_val = c('#e56969','#c1558b'),
+  fill_var = "batch",
+  plot_title = "Automation test"
+)
+```
+
+#### Full vs. half reaction (library prep with UltraLowV2 Tecan kit)
+Compare library prep with full reaction (MSEB0006, MSEB0009, MSEB0010) vs half reaction (MSEB0011, MSEB0012) of focal chicken, ceacum and colon (only low PCR cycles). NB! both buffers.
+```{r data_set_protocol, warning=FALSE, comments="", message=FALSE}
+plot_params_protocol <- list(
+  filter_conditions = list(
+    quote(section != "Ileum"), 
+    quote(batch != "MSEB0014"& batch != "MSEB0015"),
+    quote(animal == 'G121e'),
+    quote(cycles<16)
+  ),
+  labels_title = "Protocol",
+  facet_formula = "type + section + protocol ~ .", #"type + section + batch ~ ."
+  scale_fill_manual_val = c('#c1558b','#8a49a1'),
+  fill_var = "protocol",
+  plot_title = "Full vs. half reactions"
+)
+```
+
+#### Ceacum vs colon
+Compare colon vs caecum samples of the focal chicken (and only low PCR cycles)
+```{r data_set_section, warning=FALSE, comments="", message=FALSE}
+plot_params_section <- list(
+  filter_conditions = list(
+    quote(section != "Ileum"), 
+    quote(batch == "MSEB0009"|batch == "MSEB0010"|batch == "MSEB0011"|batch == "MSEB0012"),
+    quote(animal == 'G121e'),
+    quote(cycles<16)
+  ),
+  labels_title = "Section",
+  facet_formula = "type + section ~ .", #"type+ batch ~ ."
+  scale_fill_manual_val = c('#8a49a1','#4f5bd5'),
+  fill_var = "section",
+  plot_title = "Caecum vs colon"
+)
+```
+
+#### Adult vs young chicken
+Compare samples from the focal (adult) chicken vs the younger chicken, for both colon (MSEB0012) and caecum (MSEB0011).
+```{r data_set_animal, warning=FALSE, comments="", message=FALSE}
+plot_params_animal <- list(
+  filter_conditions = list(
+    quote(batch == "MSEB0011"|batch == "MSEB0012") 
+  ),
+  labels_title = "Animal",
+  facet_formula = "type + section + animal ~ .", #"type+ batch + section + animal ~ ."
+  scale_fill_manual_val = c('#ffc273','#c1558b'),
+  fill_var = "animal",
+  plot_title = "Adult vs young chicken"
+)
+```
+
+#### LMD collection attemps
+Compare samples coloured by the number of attempts to collect the LMD sample. LOD trial excluded.
+```{r data_set_collection_attempts, warning=FALSE, comments="", message=FALSE}
+plot_params_collection_attempts <- list(
+  filter_conditions = list(
+    quote(section != "Ileum"), 
+    quote(batch != "MSEB0014"),
+    quote(animal == 'G121e'),
+    quote(cycles<16),
+    quote(collection_attempts>0)
+  ),
+  labels_title = "Collection attempts",
+  facet_formula = "type + section + collection_attempts ~ .", #"type + section + batch ~ ."
+  scale_fill_manual_val = c('#ffdf9e','#ffc273','#e56969','#c1558b','#8a49a1','#4f5bd5'),
+  fill_var = "factor(collection_attempts)",
+  plot_title = "LMD collection attempts"
+)
+```
+
+#### LMD collection success
+Compare samples coloured by the LMD success jugded upon visual inspection of the collection lids. LOD trial excluded.
+```{r data_set_collection_success, warning=FALSE, comments="", message=FALSE}
+plot_params_collection_success <- list(
+  filter_conditions = list(
+    quote(section != "Ileum"), 
+    quote(batch != "MSEB0014"),
+    quote(animal == 'G121e'),
+    quote(cycles<16),
+    quote(collection_attempts>0)
+  ),
+  labels_title = "Collection_success",
+  facet_formula = "type + section + collection ~ .", #"type + section + batch ~ ."
+  scale_fill_manual_val = c('#ffc273','#e56969','#c1558b','#8a49a1','#4f5bd5'),
+  fill_var = "collection",
+  plot_title = "LMD collection success"
+)
+```
+
+#### LMD collection container
+Compare samples coloured by the container they were collected in during the microsection.
+```{r data_set_container_collection, warning=FALSE, comments="", message=FALSE}
+plot_params_container_collection <- list(
+  filter_conditions = list(
+    quote(section != "Ileum"), 
+    quote(batch == "MSEB0009"),
+    quote(cycles<16), 
+  quote(protocol == "ULV2_Full")
+  ),
+  labels_title = "Collection_container",
+  facet_formula = "type + collection_method ~ .",
+  scale_fill_manual_val = c('#c1558b','#4f5bd5'),
+  fill_var = "collection_method",
+  plot_title = "LMD collection container"
+)
+```
+
+
+#### Sections of Ceacum vs colon
+Compare colon vs caecum samples of the focal chicken (and only low PCR cycles)
+```{r data_set_slices, warning=FALSE, comments="", message=FALSE}
+plot_params_slices <- list(
+  filter_conditions = list(
+    quote(section != "Ileum"), 
+    quote(batch == "MSEB0011"|batch == "MSEB0012"),
+    quote(animal == 'G121e'),
+    quote(cycles<16)
+  ),
+  labels_title = "Section",
+  facet_formula = "type + section + cryosection ~ .", #"type+ batch ~ ."
+  scale_fill_manual_val = c('#e56969','#8a49a1'),
+  fill_var = "section",
+  plot_title = "Caecum vs colon"
+)
+```
+
+### Define a list of all the experiments/trials settings that you want to plot.
+
+```{r experiment_settings_list, warning=FALSE, comments="", message=FALSE}
+plot_params_list <- list(
+  plot_buffers = plot_params_buffers, 
+  plot_cycles = plot_params_cycles,
+  plot_LOD = plot_params_LOD,
+  plot_automation = plot_params_automation,
+  plot_protocol = plot_params_protocol,
+  plot_section = plot_params_section,
+  plot_animal = plot_params_animal,
+  plot_collection_attempts = plot_params_collection_attempts,
+  plot_collection_success = plot_params_collection_success,
+  plot_container_collection = plot_params_container_collection,
+  plot_slices = plot_params_slices
+)
+
+```
+
+  
+### Define lists that contain the settings for plotting each statistic.
+
+#### Sequencing depth
+This is the total number of sequenced reads.
+```{r stat_params_total_sequences, warning=FALSE, comments="", message=FALSE}
+stat_params_total_sequences <- list(
+  x_var = "total_sequences",
+  x_label = "Number of reads",
+  x_vline = 10000000,
+  stacked = FALSE
+)
+```
+
+#### Number of sequences after trimming
+This is the total number of sequenced reads after trimming the adaptors and low quality sequences.
+```{r stat_params_trimmed_sequences, warning=FALSE, comments="", message=FALSE}
+stat_params_trimmed_sequences <- list(
+  x_var = "total_trimmed_sequences",
+  x_label = "Number of trimmed reads",
+  x_vline = NULL,
+  stacked = FALSE
+)
+```
+
+#### Number of trimmed sequences
+This is the difference between total reads and reads after trimming.
+```{r stats_plot_param_total_trimmed, warning=FALSE, comments="", message=FALSE}
+prepare_stacked_data <- function(data) {
+  data %>%
+    mutate(trimmed_reads = total_sequences - total_trimmed_sequences) %>%
+    pivot_longer(cols = c(total_trimmed_sequences, trimmed_reads),
+                 names_to = "read_type", values_to = "reads") %>%
+    mutate(read_type = factor(read_type, levels = c("trimmed_reads", "total_trimmed_sequences")))
+}
+
+stat_params_compare_sequences <- list(
+  x_var = "total_trimmed_sequences",
+  x_label = "Number of trimmed reads",
+  x_vline = NULL,
+  stacked = TRUE
+)
+```
+
+#### Percentage (%) of unique sequences
+```{r stat_params_unique, warning=FALSE, comments="", message=FALSE}
+stat_params_unique <- list(
+  x_var = "percent_unique",
+  x_label = "% of unique sequences",
+  x_vline = 35,
+  stacked = FALSE
+)
+```
+
+#### Percentage (%) of GC content
+```{r stat_params_gc, warning=FALSE, comments="", message=FALSE}
+stat_params_gc <- list(
+  x_var = "percent_gc",
+  x_label = "% of GC content",
+  x_vline = 60,
+  stacked = FALSE
+)
+```
+
+#### Percentage (%) of host reads
+```{r stat_params_host_reads, warning=FALSE, comments="", message=FALSE}
+stat_params_host_reads <- list(
+  x_var = "reads_mapped_host_percent",
+  x_label = "% of host reads",
+  x_vline = NULL,
+  stacked = FALSE
+)
+```
+
+#### Percentage (%) of human reads
+```{r stat_params_human_reads, warning=FALSE, comments="", message=FALSE}
+stat_params_human_reads <- list(
+  x_var = "reads_mapped_human_percent",
+  x_label = "% of human reads",
+  x_vline = 5,
+  stacked = FALSE
+)
+```
+
+#### Percentage (%) of bacterial reads
+NB! In the next iteration, it is better to do this by using the counts dataset instead of the statistics file.
+```{r stat_params_bacteria_reads, warning=FALSE, comments="", message=FALSE}
+stat_params_bacteria_reads <- list(
+  x_var = "reads_mapped_bacteria_percent",
+  x_label = "% of bacteria reads",
+  x_vline = 75,
+  stacked = FALSE
+)
+```
+
+#### % of unmapped reads
+```{r stat_params_other_reads, warning=FALSE, comments="", message=FALSE}
+stat_params_other_reads <- list(
+  x_var = "reads_mapped_other_percent",
+  x_label = "% of other reads",
+  x_vline = 25,
+  stacked = FALSE
+)
+```
+
+#### Quality score
+```{r stat_quality_score, warning=FALSE, comments="", message=FALSE}
+stat_quality_score <- list(
+  x_var = "quality",
+  x_label = "Quality score",
+  x_vline = 5,
+  stacked = FALSE
+)
+```
+
+
+### Define a list of all the statistics settings that you want to plot.
+```{r stats_settings_list, warning=FALSE, comments="", message=FALSE}
+stat_params_list <- list(
+  stat_total_sequences = stat_params_total_sequences,
+  stat_trimmed_sequences = stat_params_trimmed_sequences,
+  stat_compare_sequences = stat_params_compare_sequences,
+  stat_unique = stat_params_unique,
+  stat_gc = stat_params_gc,
+  stat_host = stat_params_host_reads,
+  stat_human = stat_params_human_reads,
+  stat_bacteria = stat_params_bacteria_reads,
+  stat_other = stat_params_other_reads,
+  stat_quality = stat_quality_score
+)
+```
+
+```{r wrap_params_object, eval=FALSE}
+save(plot_params_list,
+  stat_params_list,
+  file = "data/params.Rdata"
+)
+```

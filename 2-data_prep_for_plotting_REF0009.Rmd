@@ -1,0 +1,239 @@
+# Data preparation for plotting 
+
+
+## Load the data that were prepared in the previous chapter.
+```{r load_data_quality, eval=FALSE}
+load("data/data.Rdata")
+```
+
+
+
+## Sequencing statistics dataframes
+```{r plot_data_stats, warning=FALSE, comments="", message=FALSE, eval=FALSE}
+plot_data_stats <- final_combined_stats %>%
+  left_join(sample_metadata, by = join_by(microsample == microsample))
+```
+
+Make tidy table for sequencing stats before & after trimming
+```{r tidy_plot_data_stats_before_after, warning=FALSE, comments="", message=FALSE, eval=FALSE}
+tidy_plot_data_stats_before_after <- plot_data_stats %>%
+  pivot_longer(
+    cols = c(
+    total_sequences_before_trim, total_sequences_after_trim,
+    percent_gc_before_trim, percent_gc_after_trim,
+    percent_unique_before_trim, percent_unique_after_trim
+    ),
+    names_to = c("Metric", "Condition"), # Split column names
+    names_pattern = "(.*)_(before|after)_trim"
+  ) %>%
+  pivot_wider(
+    names_from = Metric,
+    values_from = value
+  ) %>%
+  mutate(
+    Condition = factor(Condition,
+                   levels = c("before", "after")))
+```
+
+Make tidy table for counts
+```{r tidy_plot_data_stats_counts, warning=FALSE, comments="", message=FALSE, eval=FALSE}
+category_counts <- tibble::tibble(
+  category = c(
+    "bacteria_total_mapped", "chicken_total_mapped",
+    "human_total_mapped", "swine_total_mapped",
+    "unmapped", "removed_sequences_after_trim"),
+  label = c("Bacteria",  "Chicken", "Human",  "Swine",  "Unmapped", "Removed"),
+  color = c( "#B92D65", "#E8BD50", "#1092b4", "#3baf6f", "#8d98ae", "#2b2d42"))
+
+tidy_plot_data_stats_counts <- plot_data_stats %>%
+  pivot_longer(
+    cols = c(
+      chicken_total_mapped, human_total_mapped,
+      swine_total_mapped, bacteria_total_mapped,
+      unmapped, removed_sequences_after_trim),
+    names_to = "mapping_status", values_to = "counts") %>%
+  left_join(category_counts, by = c("mapping_status" = "category")) %>%
+  mutate( # order the groups in desired order
+    label = factor(label,
+                   levels = c("Bacteria", "Chicken", "Human", "Swine", "Unmapped", "Removed")))
+
+# Set labels & colours as colour palette
+color_palette_tidy_plot_data_stats_counts <- setNames(category_counts$color, category_counts$label)
+```
+
+
+## Count tables dataframes
+
+Make tidy tables for genome counts
+```{r tidy_plot_genome_counts, warning=FALSE, comments="", message=FALSE, eval=FALSE}
+tidy_plot_genome_counts <-  genome_counts %>%
+    mutate_at(vars(-genome), ~ . / sum(.)) %>% # scale each sample to 1
+    pivot_longer(-genome, names_to = "microsample", values_to = "count") %>% 
+    left_join(genome_metadata, by = join_by(genome == genome)) %>% 
+    left_join(sample_metadata, by = join_by(microsample == microsample)) %>% 
+    left_join(final_combined_stats, by = join_by(microsample == microsample)) %>%
+    mutate(section = unlist(section)) %>% # Flatten section if it's a list
+    filter(count > 0) # Filter out rows with count <= 0 (that are redundant after pivot_longer, but important for b div)
+```
+
+
+And then do the same for filtered counts at different coverage thresholds
+```{r tidy_plot_genome_counts_filt_05, warning=FALSE, comments="", message=FALSE, eval=FALSE}
+tidy_plot_genome_counts_filt_05 <-  genome_counts_filt_05 %>%
+    mutate_at(vars(-genome), ~ . / sum(.)) %>% 
+    pivot_longer(-genome, names_to = "microsample", values_to = "count") %>% 
+    left_join(genome_metadata, by = join_by(genome == genome)) %>% 
+    left_join(sample_metadata, by = join_by(microsample == microsample)) %>% 
+    left_join(final_combined_stats, by = join_by(microsample == microsample)) %>%
+    mutate(section = unlist(section)) %>% 
+    filter(count > 0) 
+```
+
+```{r tidy_plot_genome_counts_filt_10, warning=FALSE, comments="", message=FALSE, eval=FALSE}
+tidy_plot_genome_counts_filt_10 <-  genome_counts_filt_10 %>%
+    mutate_at(vars(-genome), ~ . / sum(.)) %>% 
+    pivot_longer(-genome, names_to = "microsample", values_to = "count") %>% 
+    left_join(genome_metadata, by = join_by(genome == genome)) %>% 
+    left_join(sample_metadata, by = join_by(microsample == microsample)) %>% 
+    left_join(final_combined_stats, by = join_by(microsample == microsample)) %>%
+    mutate(section = unlist(section)) %>% 
+    filter(count > 0) 
+```
+
+```{r tidy_plot_genome_counts_filt_20, warning=FALSE, comments="", message=FALSE, eval=FALSE}
+tidy_plot_genome_counts_filt_20 <-  genome_counts_filt_20 %>%
+    mutate_at(vars(-genome), ~ . / sum(.)) %>% 
+    pivot_longer(-genome, names_to = "microsample", values_to = "count") %>% 
+    left_join(genome_metadata, by = join_by(genome == genome)) %>% 
+    left_join(sample_metadata, by = join_by(microsample == microsample)) %>% 
+    left_join(final_combined_stats, by = join_by(microsample == microsample)) %>%
+    mutate(section = unlist(section)) %>% 
+    filter(count > 0) 
+```
+
+```{r tidy_plot_genome_counts_filt_30, warning=FALSE, comments="", message=FALSE, eval=FALSE}
+tidy_plot_genome_counts_filt_30 <-  genome_counts_filt_30 %>%
+    mutate_at(vars(-genome), ~ . / sum(.)) %>% 
+    pivot_longer(-genome, names_to = "microsample", values_to = "count") %>% 
+    left_join(genome_metadata, by = join_by(genome == genome)) %>% 
+    left_join(sample_metadata, by = join_by(microsample == microsample)) %>% 
+    left_join(final_combined_stats, by = join_by(microsample == microsample)) %>%
+    mutate(section = unlist(section)) %>% 
+    filter(count > 0) 
+```
+
+
+
+
+## Alpha diversity dataframes
+
+Define function to estimate the genomes' alpha diversity measurements from genome counts.
+```{r calculate_alpha_diversity, warning=FALSE, comments="", message=FALSE, eval=FALSE}
+calculate_alpha_diversity <- function(input_data, dataset_name) {
+  # Step 1: Transform the input data (remove rownames if needed)
+  input_data_matrix <- input_data %>%
+    column_to_rownames(var = "genome")
+
+  # Step 2: Calculate richness (q = 0)
+  richness <- hilldiv(input_data_matrix, q = 0) %>%
+    t() %>%
+    as.data.frame() %>%
+    rename(richness = 1) %>%
+    rownames_to_column(var = "microsample")
+
+  # Step 3: Calculate neutral diversity (q = 1)
+  neutral <- hilldiv(input_data_matrix, q = 1) %>%
+    t() %>%
+    as.data.frame() %>%
+    rename(neutral = 1) %>%
+    rownames_to_column(var = "microsample")
+
+  # Step 4: Calculate phylogenetic diversity (q = 1, with genome tree)
+  phylogenetic <- hilldiv(input_data_matrix, q = 1, tree = genome_tree) %>%
+    t() %>%
+    as.data.frame() %>%
+    rename(phylogenetic = 1) %>%
+    rownames_to_column(var = "microsample")
+
+  # Step 5: Merge all diversity metrics
+  alpha_diversity <- richness %>%
+    full_join(neutral, by = "microsample") %>%
+    full_join(phylogenetic, by = "microsample") # %>%
+    # left_join(sample_metadata, by = "microsample") %>%
+    # left_join(final_combined_stats, by = "microsample") %>%
+
+  # Return the alpha_diversity data frame
+  return(alpha_diversity)
+}
+```
+
+Estimate the alpha diversity on the unfiltered and the coverage-filtered counts
+```{r alpha_diversities_filtered, warning=FALSE, comments="", message=FALSE, eval=FALSE}
+alpha_div_unfiltered <- calculate_alpha_diversity(
+  input_data = genome_counts,
+  dataset_name = "unfiltered") %>%
+  mutate(filter_level = "unfiltered")
+
+alpha_div_filtered_05 <- calculate_alpha_diversity(
+  input_data = genome_counts_filt_05,
+  dataset_name = "filtered") %>% 
+  mutate(filter_level = "filtered_05")
+
+alpha_div_filtered_10 <- calculate_alpha_diversity(
+  input_data = genome_counts_filt_10,
+  dataset_name = "filtered") %>% 
+  mutate(filter_level = "filtered_10")
+
+alpha_div_filtered_20 <- calculate_alpha_diversity(
+  input_data = genome_counts_filt_20,
+  dataset_name = "filtered")  %>% 
+  mutate(filter_level = "filtered_20")
+
+alpha_div_filtered_30 <- calculate_alpha_diversity(
+  input_data = genome_counts_filt_30,
+  dataset_name = "filtered")  %>% 
+  mutate(filter_level = "filtered_30")
+
+``` 
+
+```{r alpha_diversity, warning=FALSE, comments="", message=FALSE, eval=FALSE}
+alpha_diversity <- bind_rows(
+  alpha_div_unfiltered,
+  alpha_div_filtered_05,
+  alpha_div_filtered_10,
+  alpha_div_filtered_20,
+  alpha_div_filtered_30) %>%
+  left_join(sample_metadata, by = "microsample") %>%
+  left_join(final_combined_stats, by = "microsample") %>%
+  mutate(filter_level = factor(filter_level, levels = c("unfiltered", "filtered_05", "filtered_10", "filtered_20",  "filtered_30")))
+```
+
+Make tidy a-diversity
+```{r tidy_plot_alpha_diversity_genomes, warning=FALSE, comments="", message=FALSE, eval=FALSE}
+tidy_plot_alpha_diversity_genomes <- alpha_diversity %>%
+  pivot_longer(
+    cols = c(richness, neutral, phylogenetic), 
+    names_to = "metric",                      
+    values_to = "value"                       
+  ) %>%
+      mutate(metric = factor(metric, levels = c("richness", "neutral", "phylogenetic")))
+```
+
+
+## Wrap working objects
+In the last step, the objects that are needed for downstream analyses are stored in an R object.
+```{r wrap_objects_plot, eval=FALSE}
+save(plot_data_stats,
+  tidy_plot_data_stats_before_after,
+  tidy_plot_data_stats_counts,
+  color_palette_tidy_plot_data_stats_counts,
+  tidy_plot_genome_counts,
+  tidy_plot_genome_counts_filt_05,
+  tidy_plot_genome_counts_filt_10,
+  tidy_plot_genome_counts_filt_20,
+  tidy_plot_genome_counts_filt_30,
+  tidy_plot_alpha_diversity_genomes,
+  phylum_colors,
+  file = "data/plot_data.Rdata"
+)
+```
