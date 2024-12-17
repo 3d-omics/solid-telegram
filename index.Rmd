@@ -3,6 +3,8 @@ title: "3D'omics | Avian microbiome - Methods MSSM manuscript"
 author:
 - Antton Alberdi^[University of Copenhagen, antton.alberdi@sund.ku.dk]
 - Amalia Bogri^[University of Copenhagen, amalia.bogri@sund.ku.dk]
+- Carlotta Pietroni^[University of Copenhagen, carlotta.pietroni@sund.ku.dk]
+- Jorge Langa^[University of Copenhagen, jorge.langa@sund.ku.dk]
 date: "`r Sys.Date()`"
 subtitle: Work in progress
 site: bookdown::bookdown_site
@@ -19,9 +21,10 @@ github-repo: "3d-omics/XXX"
 
 ```{r knitr_opts, echo=FALSE}
 knitr::opts_chunk$set(
-    class.source = "script-source",
-    class.output = "script-output",
-    comment = NA)
+  class.source = "script-source",
+  class.output = "script-output",
+  comment = NA
+)
 ```
 
 # Introduction
@@ -40,7 +43,7 @@ RStudio > New Project > Version Control > Git
 
 And indicating the following git repository:
 
-> https://github.com/3d-omics/XXX
+> https://github.com/3d-omics/ANMI014_chicken_LMD_methods.git
 
 Once the R project has been created, follow the instructions and code chunks shown in this webbook.
 
@@ -57,6 +60,7 @@ library(tinytable)
 library(broom)
 library(broom.mixed)
 library(rairtable)
+library(jsonlite)
 
 # For tree handling
 library(ape)
@@ -93,9 +97,9 @@ library(compositions)
 
 # Tidyverse libraries (load dplyr last to avoid conflicts)
 library(tidyverse)
-library(dplyr)  # Explicitly load dplyr last
-
+library(dplyr) # Explicitly load dplyr last
 ```
+
 ## Notes:
 ### Installation of modules
 Most of the modules can be downloaded from CRAN with 'install.packages('XXX', dependencies = TRUE)'.
@@ -109,4 +113,3 @@ remotes::install_github('anttonalberdi/distillR')'
 
 ### Airtable access:
 Currently the metadata is loaded from the 3D'omics airtable. In order to access it you need your own API key (from Antton). set_airtable_api_key('XXXXX', install = TRUE)
-

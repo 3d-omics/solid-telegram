@@ -22,9 +22,11 @@
 
 <meta name="author" content="Antton Alberdi" />
 <meta name="author" content="Amalia Bogri" />
+<meta name="author" content="Carlotta Pietroni" />
+<meta name="author" content="Jorge Langa" />
 
 
-<meta name="date" content="2024-09-28" />
+<meta name="date" content="2024-12-17" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -1886,7 +1888,7 @@ div.sourceCode { overflow: auto; }
 }
 @media print {
 pre > code.sourceCode { white-space: pre-wrap; }
-pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
 }
 pre.numberSource code
 { counter-reset: source-line 0; }
@@ -2040,74 +2042,60 @@ color: #741A48;
 <li class="chapter" data-level="1.2.2" data-path="index.html"><a href="index.html#airtable-access"><i class="fa fa-check"></i><b>1.2.2</b> Airtable access:</a></li>
 </ul></li>
 </ul></li>
-<li class="chapter" data-level="2" data-path="data-preparation.html"><a href="data-preparation.html"><i class="fa fa-check"></i><b>2</b> Data preparation</a>
+<li class="chapter" data-level="2" data-path="data-import.html"><a href="data-import.html"><i class="fa fa-check"></i><b>2</b> Data Import</a>
 <ul>
-<li class="chapter" data-level="2.1" data-path="data-preparation.html"><a href="data-preparation.html#sample-metadata"><i class="fa fa-check"></i><b>2.1</b> Sample metadata</a></li>
-<li class="chapter" data-level="2.2" data-path="data-preparation.html"><a href="data-preparation.html#count-data"><i class="fa fa-check"></i><b>2.2</b> Count data</a>
+<li class="chapter" data-level="2.1" data-path="data-import.html"><a href="data-import.html#bacterial-reads-counts-data"><i class="fa fa-check"></i><b>2.1</b> Bacterial reads (counts) data</a></li>
+<li class="chapter" data-level="2.2" data-path="data-import.html"><a href="data-import.html#genome-covered-bases-data"><i class="fa fa-check"></i><b>2.2</b> Genome covered bases data</a></li>
+<li class="chapter" data-level="2.3" data-path="data-import.html"><a href="data-import.html#genome-mags-metadata"><i class="fa fa-check"></i><b>2.3</b> Genome (MAGs) metadata</a>
 <ul>
-<li class="chapter" data-level="2.2.1" data-path="data-preparation.html"><a href="data-preparation.html#base-hit-table"><i class="fa fa-check"></i><b>2.2.1</b> Base hit table</a></li>
-<li class="chapter" data-level="2.2.2" data-path="data-preparation.html"><a href="data-preparation.html#genome-metadata"><i class="fa fa-check"></i><b>2.2.2</b> Genome metadata</a></li>
-<li class="chapter" data-level="2.2.3" data-path="data-preparation.html"><a href="data-preparation.html#genome-tree"><i class="fa fa-check"></i><b>2.2.3</b> Genome tree</a></li>
-<li class="chapter" data-level="2.2.4" data-path="data-preparation.html"><a href="data-preparation.html#mag-functional-annotations"><i class="fa fa-check"></i><b>2.2.4</b> MAG functional annotations</a></li>
+<li class="chapter" data-level="2.3.1" data-path="data-import.html"><a href="data-import.html#genome-mags-taxonomy"><i class="fa fa-check"></i><b>2.3.1</b> Genome (MAGs) taxonomy</a></li>
+<li class="chapter" data-level="2.3.2" data-path="data-import.html"><a href="data-import.html#genome-mags-quality"><i class="fa fa-check"></i><b>2.3.2</b> Genome (MAGs) quality</a></li>
+<li class="chapter" data-level="2.3.3" data-path="data-import.html"><a href="data-import.html#merged-genome-mags-taxonomy-quality"><i class="fa fa-check"></i><b>2.3.3</b> Merged Genome (MAGs) taxonomy &amp; quality</a></li>
+<li class="chapter" data-level="2.3.4" data-path="data-import.html"><a href="data-import.html#genome-mags-tree"><i class="fa fa-check"></i><b>2.3.4</b> Genome (MAGs) tree</a></li>
+<li class="chapter" data-level="2.3.5" data-path="data-import.html"><a href="data-import.html#genome-mags-functional-annotations"><i class="fa fa-check"></i><b>2.3.5</b> Genome (MAGs) functional annotations</a></li>
+<li class="chapter" data-level="2.3.6" data-path="data-import.html"><a href="data-import.html#distil-functional-annotations"><i class="fa fa-check"></i><b>2.3.6</b> Distil functional annotations</a></li>
 </ul></li>
-<li class="chapter" data-level="2.3" data-path="data-preparation.html"><a href="data-preparation.html#filter-and-normalise-data"><i class="fa fa-check"></i><b>2.3</b> Filter and normalise data</a>
+<li class="chapter" data-level="2.4" data-path="data-import.html"><a href="data-import.html#sample-metadata"><i class="fa fa-check"></i><b>2.4</b> Sample metadata</a></li>
+<li class="chapter" data-level="2.5" data-path="data-import.html"><a href="data-import.html#sequencing-statistics-data"><i class="fa fa-check"></i><b>2.5</b> Sequencing statistics data</a>
 <ul>
-<li class="chapter" data-level="2.3.1" data-path="data-preparation.html"><a href="data-preparation.html#generate-coverage-table"><i class="fa fa-check"></i><b>2.3.1</b> Generate coverage table</a></li>
-<li class="chapter" data-level="2.3.2" data-path="data-preparation.html"><a href="data-preparation.html#coverage-filtering"><i class="fa fa-check"></i><b>2.3.2</b> Coverage filtering</a></li>
-<li class="chapter" data-level="2.3.3" data-path="data-preparation.html"><a href="data-preparation.html#generate-genome-count-table"><i class="fa fa-check"></i><b>2.3.3</b> Generate genome count table</a></li>
-<li class="chapter" data-level="2.3.4" data-path="data-preparation.html"><a href="data-preparation.html#distil-functional-annotations"><i class="fa fa-check"></i><b>2.3.4</b> Distil functional annotations</a></li>
+<li class="chapter" data-level="2.5.1" data-path="data-import.html"><a href="data-import.html#sequencing-statistics-before-trimming"><i class="fa fa-check"></i><b>2.5.1</b> Sequencing statistics before trimming</a></li>
+<li class="chapter" data-level="2.5.2" data-path="data-import.html"><a href="data-import.html#sequencing-statistics-after-trimming"><i class="fa fa-check"></i><b>2.5.2</b> Sequencing statistics after trimming</a></li>
+<li class="chapter" data-level="2.5.3" data-path="data-import.html"><a href="data-import.html#non-bacterial-mapped-reads-humanchicken-swine"><i class="fa fa-check"></i><b>2.5.3</b> Non-bacterial mapped reads: human,chicken, swine</a></li>
+<li class="chapter" data-level="2.5.4" data-path="data-import.html"><a href="data-import.html#bacterial-mapped-reads"><i class="fa fa-check"></i><b>2.5.4</b> Bacterial mapped reads</a></li>
+<li class="chapter" data-level="2.5.5" data-path="data-import.html"><a href="data-import.html#combine-relevant-sequencing-statistics"><i class="fa fa-check"></i><b>2.5.5</b> Combine relevant sequencing statistics</a></li>
 </ul></li>
-<li class="chapter" data-level="2.4" data-path="data-preparation.html"><a href="data-preparation.html#color-scheme"><i class="fa fa-check"></i><b>2.4</b> Color scheme</a></li>
-<li class="chapter" data-level="2.5" data-path="data-preparation.html"><a href="data-preparation.html#wrap-working-objects"><i class="fa fa-check"></i><b>2.5</b> Wrap working objects</a></li>
+<li class="chapter" data-level="2.6" data-path="data-import.html"><a href="data-import.html#bacterial-phyla-color-scheme-data"><i class="fa fa-check"></i><b>2.6</b> Bacterial phyla color scheme data</a></li>
+<li class="chapter" data-level="2.7" data-path="data-import.html"><a href="data-import.html#filter-and-normalise-data"><i class="fa fa-check"></i><b>2.7</b> Filter and normalise data</a>
+<ul>
+<li class="chapter" data-level="2.7.1" data-path="data-import.html"><a href="data-import.html#generate-coverage-table"><i class="fa fa-check"></i><b>2.7.1</b> Generate coverage table</a></li>
+<li class="chapter" data-level="2.7.2" data-path="data-import.html"><a href="data-import.html#coverage-filtering"><i class="fa fa-check"></i><b>2.7.2</b> Coverage filtering</a></li>
+<li class="chapter" data-level="2.7.3" data-path="data-import.html"><a href="data-import.html#generate-genome-count-table"><i class="fa fa-check"></i><b>2.7.3</b> Generate genome count table</a></li>
 </ul></li>
-<li class="chapter" data-level="3" data-path="data-quality.html"><a href="data-quality.html"><i class="fa fa-check"></i><b>3</b> Data quality</a>
-<ul>
-<li class="chapter" data-level="3.1" data-path="data-quality.html"><a href="data-quality.html#load-the-data-that-were-prepared-in-the-previous-chapter."><i class="fa fa-check"></i><b>3.1</b> Load the data that were prepared in the previous chapter.</a></li>
-<li class="chapter" data-level="3.2" data-path="data-quality.html"><a href="data-quality.html#data-loading"><i class="fa fa-check"></i><b>3.2</b> Data loading</a>
-<ul>
-<li class="chapter" data-level="3.2.1" data-path="data-quality.html"><a href="data-quality.html#define-lists-with-the-names-of-the-files-required-for-the-statistics."><i class="fa fa-check"></i><b>3.2.1</b> Define lists with the names of the files required for the statistics.</a></li>
-<li class="chapter" data-level="3.2.2" data-path="data-quality.html"><a href="data-quality.html#define-functions-to-load-the-statistics."><i class="fa fa-check"></i><b>3.2.2</b> Define functions to load the statistics.</a></li>
-<li class="chapter" data-level="3.2.3" data-path="data-quality.html"><a href="data-quality.html#load-the-statistics."><i class="fa fa-check"></i><b>3.2.3</b> Load the statistics.</a></li>
-<li class="chapter" data-level="3.2.4" data-path="data-quality.html"><a href="data-quality.html#write-the-final-stats-dataframe-to-a-tsv-file"><i class="fa fa-check"></i><b>3.2.4</b> Write the final stats dataframe to a TSV file</a></li>
+<li class="chapter" data-level="2.8" data-path="data-import.html"><a href="data-import.html#wrap-working-objects"><i class="fa fa-check"></i><b>2.8</b> Wrap working objects</a></li>
 </ul></li>
-<li class="chapter" data-level="3.3" data-path="data-quality.html"><a href="data-quality.html#data-plotting"><i class="fa fa-check"></i><b>3.3</b> Data plotting</a>
+<li class="chapter" data-level="3" data-path="data-preparation-for-plotting.html"><a href="data-preparation-for-plotting.html"><i class="fa fa-check"></i><b>3</b> Data preparation for plotting</a>
 <ul>
-<li class="chapter" data-level="3.3.1" data-path="data-quality.html"><a href="data-quality.html#define-lists-that-contain-the-settings-for-plotting-each-statistic."><i class="fa fa-check"></i><b>3.3.1</b> Define lists that contain the settings for plotting each statistic.</a></li>
-<li class="chapter" data-level="3.3.2" data-path="data-quality.html"><a href="data-quality.html#define-a-list-of-all-the-statistics-settings-that-you-want-to-plot."><i class="fa fa-check"></i><b>3.3.2</b> Define a list of all the statistics settings that you want to plot.</a></li>
-<li class="chapter" data-level="3.3.3" data-path="data-quality.html"><a href="data-quality.html#define-lists-that-contain-the-plot-settings-for-different-experimentstrials"><i class="fa fa-check"></i><b>3.3.3</b> Define lists that contain the plot settings for different experiments/trials</a></li>
-<li class="chapter" data-level="3.3.4" data-path="data-quality.html"><a href="data-quality.html#define-a-list-of-all-the-experimentstrials-settings-that-you-want-to-plot."><i class="fa fa-check"></i><b>3.3.4</b> Define a list of all the experiments/trials settings that you want to plot.</a></li>
-<li class="chapter" data-level="3.3.5" data-path="data-quality.html"><a href="data-quality.html#define-barplot-function"><i class="fa fa-check"></i><b>3.3.5</b> Define barplot function</a></li>
+<li class="chapter" data-level="3.1" data-path="data-preparation-for-plotting.html"><a href="data-preparation-for-plotting.html#load-the-data-that-were-prepared-in-the-previous-chapter."><i class="fa fa-check"></i><b>3.1</b> Load the data that were prepared in the previous chapter.</a></li>
+<li class="chapter" data-level="3.2" data-path="data-preparation-for-plotting.html"><a href="data-preparation-for-plotting.html#sequencing-statistics-dataframes"><i class="fa fa-check"></i><b>3.2</b> Sequencing statistics dataframes</a></li>
+<li class="chapter" data-level="3.3" data-path="data-preparation-for-plotting.html"><a href="data-preparation-for-plotting.html#count-tables-dataframes"><i class="fa fa-check"></i><b>3.3</b> Count tables dataframes</a></li>
+<li class="chapter" data-level="3.4" data-path="data-preparation-for-plotting.html"><a href="data-preparation-for-plotting.html#alpha-diversity-dataframes"><i class="fa fa-check"></i><b>3.4</b> Alpha diversity dataframes</a></li>
+<li class="chapter" data-level="3.5" data-path="data-preparation-for-plotting.html"><a href="data-preparation-for-plotting.html#wrap-working-objects-1"><i class="fa fa-check"></i><b>3.5</b> Wrap working objects</a></li>
 </ul></li>
-<li class="chapter" data-level="3.4" data-path="data-quality.html"><a href="data-quality.html#plot-figures-for-all-the-statistics-and-all-experiments."><i class="fa fa-check"></i><b>3.4</b> Plot figures for all the statistics and all experiments.</a></li>
+<li class="chapter" data-level="4" data-path="list-of-experiments.html"><a href="list-of-experiments.html"><i class="fa fa-check"></i><b>4</b> List of experiments</a>
+<ul>
+<li class="chapter" data-level="4.0.1" data-path="list-of-experiments.html"><a href="list-of-experiments.html#b11-vs-b12-lysis-buffers"><i class="fa fa-check"></i><b>4.0.1</b> B11 vs B12 lysis buffers</a></li>
+<li class="chapter" data-level="4.0.2" data-path="list-of-experiments.html"><a href="list-of-experiments.html#define-a-list-of-all-the-experimentstrials-settings-that-you-want-to-plot."><i class="fa fa-check"></i><b>4.0.2</b> Define a list of all the experiments/trials settings that you want to plot.</a></li>
+<li class="chapter" data-level="4.0.3" data-path="list-of-experiments.html"><a href="list-of-experiments.html#define-lists-that-contain-the-settings-for-plotting-each-statistic."><i class="fa fa-check"></i><b>4.0.3</b> Define lists that contain the settings for plotting each statistic.</a></li>
+<li class="chapter" data-level="4.0.4" data-path="list-of-experiments.html"><a href="list-of-experiments.html#define-a-list-of-all-the-statistics-settings-that-you-want-to-plot."><i class="fa fa-check"></i><b>4.0.4</b> Define a list of all the statistics settings that you want to plot.</a></li>
 </ul></li>
-<li class="chapter" data-level="4" data-path="community-composition.html"><a href="community-composition.html"><i class="fa fa-check"></i><b>4</b> Community composition</a>
+<li class="chapter" data-level="5" data-path="lysis-buffer-trial-b11-vs-b12.html"><a href="lysis-buffer-trial-b11-vs-b12.html"><i class="fa fa-check"></i><b>5</b> Lysis buffer trial (B11 vs B12)</a>
 <ul>
-<li class="chapter" data-level="4.1" data-path="community-composition.html"><a href="community-composition.html#load-data"><i class="fa fa-check"></i><b>4.1</b> Load data</a></li>
-<li class="chapter" data-level="4.2" data-path="community-composition.html"><a href="community-composition.html#community-composition-barplots"><i class="fa fa-check"></i><b>4.2</b> Community composition barplots</a>
+<li class="chapter" data-level="5.1" data-path="lysis-buffer-trial-b11-vs-b12.html"><a href="lysis-buffer-trial-b11-vs-b12.html#load-data"><i class="fa fa-check"></i><b>5.1</b> Load data</a></li>
+<li class="chapter" data-level="5.2" data-path="lysis-buffer-trial-b11-vs-b12.html"><a href="lysis-buffer-trial-b11-vs-b12.html#define-plotting-settings"><i class="fa fa-check"></i><b>5.2</b> Define plotting settings</a></li>
+<li class="chapter" data-level="5.3" data-path="lysis-buffer-trial-b11-vs-b12.html"><a href="lysis-buffer-trial-b11-vs-b12.html#setup-filter-conditions"><i class="fa fa-check"></i><b>5.3</b> Setup filter conditions</a></li>
+<li class="chapter" data-level="5.4" data-path="lysis-buffer-trial-b11-vs-b12.html"><a href="lysis-buffer-trial-b11-vs-b12.html#plots"><i class="fa fa-check"></i><b>5.4</b> Plots</a>
 <ul>
-<li class="chapter" data-level="4.2.1" data-path="community-composition.html"><a href="community-composition.html#phylum-level-plot"><i class="fa fa-check"></i><b>4.2.1</b> Phylum level plot</a></li>
-<li class="chapter" data-level="4.2.2" data-path="community-composition.html"><a href="community-composition.html#genus-level-plot"><i class="fa fa-check"></i><b>4.2.2</b> Genus level plot</a></li>
-<li class="chapter" data-level="4.2.3" data-path="community-composition.html"><a href="community-composition.html#composition-plotting-function"><i class="fa fa-check"></i><b>4.2.3</b> Composition plotting function</a></li>
-<li class="chapter" data-level="4.2.4" data-path="community-composition.html"><a href="community-composition.html#generate-taxonomy-datasets"><i class="fa fa-check"></i><b>4.2.4</b> Generate taxonomy datasets</a></li>
-<li class="chapter" data-level="4.2.5" data-path="community-composition.html"><a href="community-composition.html#generate-plots"><i class="fa fa-check"></i><b>4.2.5</b> Generate plots</a></li>
-</ul></li>
-<li class="chapter" data-level="4.3" data-path="community-composition.html"><a href="community-composition.html#phylogeny-mag-heatmap-visualisation"><i class="fa fa-check"></i><b>4.3</b> Phylogeny &amp; MAG heatmap visualisation</a>
-<ul>
-<li class="chapter" data-level="4.3.1" data-path="community-composition.html"><a href="community-composition.html#define-mag-overview-plotting-fuction"><i class="fa fa-check"></i><b>4.3.1</b> Define MAG overview plotting fuction</a></li>
-<li class="chapter" data-level="4.3.2" data-path="community-composition.html"><a href="community-composition.html#generate-mag-tree-relative-abundance-plots"><i class="fa fa-check"></i><b>4.3.2</b> Generate MAG tree &amp; relative abundance plots</a></li>
-</ul></li>
-<li class="chapter" data-level="4.4" data-path="community-composition.html"><a href="community-composition.html#composition-jitterplot-functions"><i class="fa fa-check"></i><b>4.4</b> Composition jitterplot functions</a></li>
-<li class="chapter" data-level="4.5" data-path="community-composition.html"><a href="community-composition.html#covariance"><i class="fa fa-check"></i><b>4.5</b> Covariance</a></li>
-</ul></li>
-<li class="chapter" data-level="5" data-path="alpha-diversity.html"><a href="alpha-diversity.html"><i class="fa fa-check"></i><b>5</b> Alpha diversity</a>
-<ul>
-<li class="chapter" data-level="5.1" data-path="alpha-diversity.html"><a href="alpha-diversity.html#load-data-1"><i class="fa fa-check"></i><b>5.1</b> Load data</a></li>
-</ul></li>
-<li class="chapter" data-level="6" data-path="beta-diversity.html"><a href="beta-diversity.html"><i class="fa fa-check"></i><b>6</b> Beta diversity</a>
-<ul>
-<li class="chapter" data-level="6.1" data-path="beta-diversity.html"><a href="beta-diversity.html#nmds-plots"><i class="fa fa-check"></i><b>6.1</b> NMDS plots</a>
-<ul>
-<li class="chapter" data-level="6.1.1" data-path="beta-diversity.html"><a href="beta-diversity.html#compositional-not-ready"><i class="fa fa-check"></i><b>6.1.1</b> Compositional # NOT READY</a></li>
+<li class="chapter" data-level="5.4.1" data-path="lysis-buffer-trial-b11-vs-b12.html"><a href="lysis-buffer-trial-b11-vs-b12.html#genus-level-plot"><i class="fa fa-check"></i><b>5.4.1</b> Genus level plot</a></li>
 </ul></li>
 </ul></li>
 <li class="divider"></li>
