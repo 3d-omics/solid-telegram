@@ -22,9 +22,11 @@
 
 <meta name="author" content="Antton Alberdi" />
 <meta name="author" content="Amalia Bogri" />
+<meta name="author" content="Carlotta Pietroni" />
+<meta name="author" content="Jorge Langa" />
 
 
-<meta name="date" content="2024-09-28" />
+<meta name="date" content="2024-12-17" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -32,7 +34,7 @@
   
   
 
-<link rel="next" href="data-preparation.html"/>
+<link rel="next" href="data-import.html"/>
 
 
 
@@ -1886,7 +1888,7 @@ div.sourceCode { overflow: auto; }
 }
 @media print {
 pre > code.sourceCode { white-space: pre-wrap; }
-pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
 }
 pre.numberSource code
 { counter-reset: source-line 0; }
@@ -2040,74 +2042,60 @@ color: #741A48;
 <li class="chapter" data-level="1.2.2" data-path="index.html"><a href="index.html#airtable-access"><i class="fa fa-check"></i><b>1.2.2</b> Airtable access:</a></li>
 </ul></li>
 </ul></li>
-<li class="chapter" data-level="2" data-path="data-preparation.html"><a href="data-preparation.html"><i class="fa fa-check"></i><b>2</b> Data preparation</a>
+<li class="chapter" data-level="2" data-path="data-import.html"><a href="data-import.html"><i class="fa fa-check"></i><b>2</b> Data Import</a>
 <ul>
-<li class="chapter" data-level="2.1" data-path="data-preparation.html"><a href="data-preparation.html#sample-metadata"><i class="fa fa-check"></i><b>2.1</b> Sample metadata</a></li>
-<li class="chapter" data-level="2.2" data-path="data-preparation.html"><a href="data-preparation.html#count-data"><i class="fa fa-check"></i><b>2.2</b> Count data</a>
+<li class="chapter" data-level="2.1" data-path="data-import.html"><a href="data-import.html#bacterial-reads-counts-data"><i class="fa fa-check"></i><b>2.1</b> Bacterial reads (counts) data</a></li>
+<li class="chapter" data-level="2.2" data-path="data-import.html"><a href="data-import.html#genome-covered-bases-data"><i class="fa fa-check"></i><b>2.2</b> Genome covered bases data</a></li>
+<li class="chapter" data-level="2.3" data-path="data-import.html"><a href="data-import.html#genome-mags-metadata"><i class="fa fa-check"></i><b>2.3</b> Genome (MAGs) metadata</a>
 <ul>
-<li class="chapter" data-level="2.2.1" data-path="data-preparation.html"><a href="data-preparation.html#base-hit-table"><i class="fa fa-check"></i><b>2.2.1</b> Base hit table</a></li>
-<li class="chapter" data-level="2.2.2" data-path="data-preparation.html"><a href="data-preparation.html#genome-metadata"><i class="fa fa-check"></i><b>2.2.2</b> Genome metadata</a></li>
-<li class="chapter" data-level="2.2.3" data-path="data-preparation.html"><a href="data-preparation.html#genome-tree"><i class="fa fa-check"></i><b>2.2.3</b> Genome tree</a></li>
-<li class="chapter" data-level="2.2.4" data-path="data-preparation.html"><a href="data-preparation.html#mag-functional-annotations"><i class="fa fa-check"></i><b>2.2.4</b> MAG functional annotations</a></li>
+<li class="chapter" data-level="2.3.1" data-path="data-import.html"><a href="data-import.html#genome-mags-taxonomy"><i class="fa fa-check"></i><b>2.3.1</b> Genome (MAGs) taxonomy</a></li>
+<li class="chapter" data-level="2.3.2" data-path="data-import.html"><a href="data-import.html#genome-mags-quality"><i class="fa fa-check"></i><b>2.3.2</b> Genome (MAGs) quality</a></li>
+<li class="chapter" data-level="2.3.3" data-path="data-import.html"><a href="data-import.html#merged-genome-mags-taxonomy-quality"><i class="fa fa-check"></i><b>2.3.3</b> Merged Genome (MAGs) taxonomy &amp; quality</a></li>
+<li class="chapter" data-level="2.3.4" data-path="data-import.html"><a href="data-import.html#genome-mags-tree"><i class="fa fa-check"></i><b>2.3.4</b> Genome (MAGs) tree</a></li>
+<li class="chapter" data-level="2.3.5" data-path="data-import.html"><a href="data-import.html#genome-mags-functional-annotations"><i class="fa fa-check"></i><b>2.3.5</b> Genome (MAGs) functional annotations</a></li>
+<li class="chapter" data-level="2.3.6" data-path="data-import.html"><a href="data-import.html#distil-functional-annotations"><i class="fa fa-check"></i><b>2.3.6</b> Distil functional annotations</a></li>
 </ul></li>
-<li class="chapter" data-level="2.3" data-path="data-preparation.html"><a href="data-preparation.html#filter-and-normalise-data"><i class="fa fa-check"></i><b>2.3</b> Filter and normalise data</a>
+<li class="chapter" data-level="2.4" data-path="data-import.html"><a href="data-import.html#sample-metadata"><i class="fa fa-check"></i><b>2.4</b> Sample metadata</a></li>
+<li class="chapter" data-level="2.5" data-path="data-import.html"><a href="data-import.html#sequencing-statistics-data"><i class="fa fa-check"></i><b>2.5</b> Sequencing statistics data</a>
 <ul>
-<li class="chapter" data-level="2.3.1" data-path="data-preparation.html"><a href="data-preparation.html#generate-coverage-table"><i class="fa fa-check"></i><b>2.3.1</b> Generate coverage table</a></li>
-<li class="chapter" data-level="2.3.2" data-path="data-preparation.html"><a href="data-preparation.html#coverage-filtering"><i class="fa fa-check"></i><b>2.3.2</b> Coverage filtering</a></li>
-<li class="chapter" data-level="2.3.3" data-path="data-preparation.html"><a href="data-preparation.html#generate-genome-count-table"><i class="fa fa-check"></i><b>2.3.3</b> Generate genome count table</a></li>
-<li class="chapter" data-level="2.3.4" data-path="data-preparation.html"><a href="data-preparation.html#distil-functional-annotations"><i class="fa fa-check"></i><b>2.3.4</b> Distil functional annotations</a></li>
+<li class="chapter" data-level="2.5.1" data-path="data-import.html"><a href="data-import.html#sequencing-statistics-before-trimming"><i class="fa fa-check"></i><b>2.5.1</b> Sequencing statistics before trimming</a></li>
+<li class="chapter" data-level="2.5.2" data-path="data-import.html"><a href="data-import.html#sequencing-statistics-after-trimming"><i class="fa fa-check"></i><b>2.5.2</b> Sequencing statistics after trimming</a></li>
+<li class="chapter" data-level="2.5.3" data-path="data-import.html"><a href="data-import.html#non-bacterial-mapped-reads-humanchicken-swine"><i class="fa fa-check"></i><b>2.5.3</b> Non-bacterial mapped reads: human,chicken, swine</a></li>
+<li class="chapter" data-level="2.5.4" data-path="data-import.html"><a href="data-import.html#bacterial-mapped-reads"><i class="fa fa-check"></i><b>2.5.4</b> Bacterial mapped reads</a></li>
+<li class="chapter" data-level="2.5.5" data-path="data-import.html"><a href="data-import.html#combine-relevant-sequencing-statistics"><i class="fa fa-check"></i><b>2.5.5</b> Combine relevant sequencing statistics</a></li>
 </ul></li>
-<li class="chapter" data-level="2.4" data-path="data-preparation.html"><a href="data-preparation.html#color-scheme"><i class="fa fa-check"></i><b>2.4</b> Color scheme</a></li>
-<li class="chapter" data-level="2.5" data-path="data-preparation.html"><a href="data-preparation.html#wrap-working-objects"><i class="fa fa-check"></i><b>2.5</b> Wrap working objects</a></li>
+<li class="chapter" data-level="2.6" data-path="data-import.html"><a href="data-import.html#bacterial-phyla-color-scheme-data"><i class="fa fa-check"></i><b>2.6</b> Bacterial phyla color scheme data</a></li>
+<li class="chapter" data-level="2.7" data-path="data-import.html"><a href="data-import.html#filter-and-normalise-data"><i class="fa fa-check"></i><b>2.7</b> Filter and normalise data</a>
+<ul>
+<li class="chapter" data-level="2.7.1" data-path="data-import.html"><a href="data-import.html#generate-coverage-table"><i class="fa fa-check"></i><b>2.7.1</b> Generate coverage table</a></li>
+<li class="chapter" data-level="2.7.2" data-path="data-import.html"><a href="data-import.html#coverage-filtering"><i class="fa fa-check"></i><b>2.7.2</b> Coverage filtering</a></li>
+<li class="chapter" data-level="2.7.3" data-path="data-import.html"><a href="data-import.html#generate-genome-count-table"><i class="fa fa-check"></i><b>2.7.3</b> Generate genome count table</a></li>
 </ul></li>
-<li class="chapter" data-level="3" data-path="data-quality.html"><a href="data-quality.html"><i class="fa fa-check"></i><b>3</b> Data quality</a>
-<ul>
-<li class="chapter" data-level="3.1" data-path="data-quality.html"><a href="data-quality.html#load-the-data-that-were-prepared-in-the-previous-chapter."><i class="fa fa-check"></i><b>3.1</b> Load the data that were prepared in the previous chapter.</a></li>
-<li class="chapter" data-level="3.2" data-path="data-quality.html"><a href="data-quality.html#data-loading"><i class="fa fa-check"></i><b>3.2</b> Data loading</a>
-<ul>
-<li class="chapter" data-level="3.2.1" data-path="data-quality.html"><a href="data-quality.html#define-lists-with-the-names-of-the-files-required-for-the-statistics."><i class="fa fa-check"></i><b>3.2.1</b> Define lists with the names of the files required for the statistics.</a></li>
-<li class="chapter" data-level="3.2.2" data-path="data-quality.html"><a href="data-quality.html#define-functions-to-load-the-statistics."><i class="fa fa-check"></i><b>3.2.2</b> Define functions to load the statistics.</a></li>
-<li class="chapter" data-level="3.2.3" data-path="data-quality.html"><a href="data-quality.html#load-the-statistics."><i class="fa fa-check"></i><b>3.2.3</b> Load the statistics.</a></li>
-<li class="chapter" data-level="3.2.4" data-path="data-quality.html"><a href="data-quality.html#write-the-final-stats-dataframe-to-a-tsv-file"><i class="fa fa-check"></i><b>3.2.4</b> Write the final stats dataframe to a TSV file</a></li>
+<li class="chapter" data-level="2.8" data-path="data-import.html"><a href="data-import.html#wrap-working-objects"><i class="fa fa-check"></i><b>2.8</b> Wrap working objects</a></li>
 </ul></li>
-<li class="chapter" data-level="3.3" data-path="data-quality.html"><a href="data-quality.html#data-plotting"><i class="fa fa-check"></i><b>3.3</b> Data plotting</a>
+<li class="chapter" data-level="3" data-path="data-preparation-for-plotting.html"><a href="data-preparation-for-plotting.html"><i class="fa fa-check"></i><b>3</b> Data preparation for plotting</a>
 <ul>
-<li class="chapter" data-level="3.3.1" data-path="data-quality.html"><a href="data-quality.html#define-lists-that-contain-the-settings-for-plotting-each-statistic."><i class="fa fa-check"></i><b>3.3.1</b> Define lists that contain the settings for plotting each statistic.</a></li>
-<li class="chapter" data-level="3.3.2" data-path="data-quality.html"><a href="data-quality.html#define-a-list-of-all-the-statistics-settings-that-you-want-to-plot."><i class="fa fa-check"></i><b>3.3.2</b> Define a list of all the statistics settings that you want to plot.</a></li>
-<li class="chapter" data-level="3.3.3" data-path="data-quality.html"><a href="data-quality.html#define-lists-that-contain-the-plot-settings-for-different-experimentstrials"><i class="fa fa-check"></i><b>3.3.3</b> Define lists that contain the plot settings for different experiments/trials</a></li>
-<li class="chapter" data-level="3.3.4" data-path="data-quality.html"><a href="data-quality.html#define-a-list-of-all-the-experimentstrials-settings-that-you-want-to-plot."><i class="fa fa-check"></i><b>3.3.4</b> Define a list of all the experiments/trials settings that you want to plot.</a></li>
-<li class="chapter" data-level="3.3.5" data-path="data-quality.html"><a href="data-quality.html#define-barplot-function"><i class="fa fa-check"></i><b>3.3.5</b> Define barplot function</a></li>
+<li class="chapter" data-level="3.1" data-path="data-preparation-for-plotting.html"><a href="data-preparation-for-plotting.html#load-the-data-that-were-prepared-in-the-previous-chapter."><i class="fa fa-check"></i><b>3.1</b> Load the data that were prepared in the previous chapter.</a></li>
+<li class="chapter" data-level="3.2" data-path="data-preparation-for-plotting.html"><a href="data-preparation-for-plotting.html#sequencing-statistics-dataframes"><i class="fa fa-check"></i><b>3.2</b> Sequencing statistics dataframes</a></li>
+<li class="chapter" data-level="3.3" data-path="data-preparation-for-plotting.html"><a href="data-preparation-for-plotting.html#count-tables-dataframes"><i class="fa fa-check"></i><b>3.3</b> Count tables dataframes</a></li>
+<li class="chapter" data-level="3.4" data-path="data-preparation-for-plotting.html"><a href="data-preparation-for-plotting.html#alpha-diversity-dataframes"><i class="fa fa-check"></i><b>3.4</b> Alpha diversity dataframes</a></li>
+<li class="chapter" data-level="3.5" data-path="data-preparation-for-plotting.html"><a href="data-preparation-for-plotting.html#wrap-working-objects-1"><i class="fa fa-check"></i><b>3.5</b> Wrap working objects</a></li>
 </ul></li>
-<li class="chapter" data-level="3.4" data-path="data-quality.html"><a href="data-quality.html#plot-figures-for-all-the-statistics-and-all-experiments."><i class="fa fa-check"></i><b>3.4</b> Plot figures for all the statistics and all experiments.</a></li>
+<li class="chapter" data-level="4" data-path="list-of-experiments.html"><a href="list-of-experiments.html"><i class="fa fa-check"></i><b>4</b> List of experiments</a>
+<ul>
+<li class="chapter" data-level="4.0.1" data-path="list-of-experiments.html"><a href="list-of-experiments.html#b11-vs-b12-lysis-buffers"><i class="fa fa-check"></i><b>4.0.1</b> B11 vs B12 lysis buffers</a></li>
+<li class="chapter" data-level="4.0.2" data-path="list-of-experiments.html"><a href="list-of-experiments.html#define-a-list-of-all-the-experimentstrials-settings-that-you-want-to-plot."><i class="fa fa-check"></i><b>4.0.2</b> Define a list of all the experiments/trials settings that you want to plot.</a></li>
+<li class="chapter" data-level="4.0.3" data-path="list-of-experiments.html"><a href="list-of-experiments.html#define-lists-that-contain-the-settings-for-plotting-each-statistic."><i class="fa fa-check"></i><b>4.0.3</b> Define lists that contain the settings for plotting each statistic.</a></li>
+<li class="chapter" data-level="4.0.4" data-path="list-of-experiments.html"><a href="list-of-experiments.html#define-a-list-of-all-the-statistics-settings-that-you-want-to-plot."><i class="fa fa-check"></i><b>4.0.4</b> Define a list of all the statistics settings that you want to plot.</a></li>
 </ul></li>
-<li class="chapter" data-level="4" data-path="community-composition.html"><a href="community-composition.html"><i class="fa fa-check"></i><b>4</b> Community composition</a>
+<li class="chapter" data-level="5" data-path="lysis-buffer-trial-b11-vs-b12.html"><a href="lysis-buffer-trial-b11-vs-b12.html"><i class="fa fa-check"></i><b>5</b> Lysis buffer trial (B11 vs B12)</a>
 <ul>
-<li class="chapter" data-level="4.1" data-path="community-composition.html"><a href="community-composition.html#load-data"><i class="fa fa-check"></i><b>4.1</b> Load data</a></li>
-<li class="chapter" data-level="4.2" data-path="community-composition.html"><a href="community-composition.html#community-composition-barplots"><i class="fa fa-check"></i><b>4.2</b> Community composition barplots</a>
+<li class="chapter" data-level="5.1" data-path="lysis-buffer-trial-b11-vs-b12.html"><a href="lysis-buffer-trial-b11-vs-b12.html#load-data"><i class="fa fa-check"></i><b>5.1</b> Load data</a></li>
+<li class="chapter" data-level="5.2" data-path="lysis-buffer-trial-b11-vs-b12.html"><a href="lysis-buffer-trial-b11-vs-b12.html#define-plotting-settings"><i class="fa fa-check"></i><b>5.2</b> Define plotting settings</a></li>
+<li class="chapter" data-level="5.3" data-path="lysis-buffer-trial-b11-vs-b12.html"><a href="lysis-buffer-trial-b11-vs-b12.html#setup-filter-conditions"><i class="fa fa-check"></i><b>5.3</b> Setup filter conditions</a></li>
+<li class="chapter" data-level="5.4" data-path="lysis-buffer-trial-b11-vs-b12.html"><a href="lysis-buffer-trial-b11-vs-b12.html#plots"><i class="fa fa-check"></i><b>5.4</b> Plots</a>
 <ul>
-<li class="chapter" data-level="4.2.1" data-path="community-composition.html"><a href="community-composition.html#phylum-level-plot"><i class="fa fa-check"></i><b>4.2.1</b> Phylum level plot</a></li>
-<li class="chapter" data-level="4.2.2" data-path="community-composition.html"><a href="community-composition.html#genus-level-plot"><i class="fa fa-check"></i><b>4.2.2</b> Genus level plot</a></li>
-<li class="chapter" data-level="4.2.3" data-path="community-composition.html"><a href="community-composition.html#composition-plotting-function"><i class="fa fa-check"></i><b>4.2.3</b> Composition plotting function</a></li>
-<li class="chapter" data-level="4.2.4" data-path="community-composition.html"><a href="community-composition.html#generate-taxonomy-datasets"><i class="fa fa-check"></i><b>4.2.4</b> Generate taxonomy datasets</a></li>
-<li class="chapter" data-level="4.2.5" data-path="community-composition.html"><a href="community-composition.html#generate-plots"><i class="fa fa-check"></i><b>4.2.5</b> Generate plots</a></li>
-</ul></li>
-<li class="chapter" data-level="4.3" data-path="community-composition.html"><a href="community-composition.html#phylogeny-mag-heatmap-visualisation"><i class="fa fa-check"></i><b>4.3</b> Phylogeny &amp; MAG heatmap visualisation</a>
-<ul>
-<li class="chapter" data-level="4.3.1" data-path="community-composition.html"><a href="community-composition.html#define-mag-overview-plotting-fuction"><i class="fa fa-check"></i><b>4.3.1</b> Define MAG overview plotting fuction</a></li>
-<li class="chapter" data-level="4.3.2" data-path="community-composition.html"><a href="community-composition.html#generate-mag-tree-relative-abundance-plots"><i class="fa fa-check"></i><b>4.3.2</b> Generate MAG tree &amp; relative abundance plots</a></li>
-</ul></li>
-<li class="chapter" data-level="4.4" data-path="community-composition.html"><a href="community-composition.html#composition-jitterplot-functions"><i class="fa fa-check"></i><b>4.4</b> Composition jitterplot functions</a></li>
-<li class="chapter" data-level="4.5" data-path="community-composition.html"><a href="community-composition.html#covariance"><i class="fa fa-check"></i><b>4.5</b> Covariance</a></li>
-</ul></li>
-<li class="chapter" data-level="5" data-path="alpha-diversity.html"><a href="alpha-diversity.html"><i class="fa fa-check"></i><b>5</b> Alpha diversity</a>
-<ul>
-<li class="chapter" data-level="5.1" data-path="alpha-diversity.html"><a href="alpha-diversity.html#load-data-1"><i class="fa fa-check"></i><b>5.1</b> Load data</a></li>
-</ul></li>
-<li class="chapter" data-level="6" data-path="beta-diversity.html"><a href="beta-diversity.html"><i class="fa fa-check"></i><b>6</b> Beta diversity</a>
-<ul>
-<li class="chapter" data-level="6.1" data-path="beta-diversity.html"><a href="beta-diversity.html#nmds-plots"><i class="fa fa-check"></i><b>6.1</b> NMDS plots</a>
-<ul>
-<li class="chapter" data-level="6.1.1" data-path="beta-diversity.html"><a href="beta-diversity.html#compositional-not-ready"><i class="fa fa-check"></i><b>6.1.1</b> Compositional # NOT READY</a></li>
+<li class="chapter" data-level="5.4.1" data-path="lysis-buffer-trial-b11-vs-b12.html"><a href="lysis-buffer-trial-b11-vs-b12.html#genus-level-plot"><i class="fa fa-check"></i><b>5.4.1</b> Genus level plot</a></li>
 </ul></li>
 </ul></li>
 <li class="divider"></li>
@@ -2137,7 +2125,9 @@ color: #741A48;
 <h2 class="subtitle"><em>Work in progress</em></h2>
 <p class="author"><em>Antton Alberdi<a href="#fn1" class="footnote-ref" id="fnref1"><sup>1</sup></a></em></p>
 <p class="author"><em>Amalia Bogri<a href="#fn2" class="footnote-ref" id="fnref2"><sup>2</sup></a></em></p>
-<p class="date"><em>2024-09-28</em></p>
+<p class="author"><em>Carlotta Pietroni<a href="#fn3" class="footnote-ref" id="fnref3"><sup>3</sup></a></em></p>
+<p class="author"><em>Jorge Langa<a href="#fn4" class="footnote-ref" id="fnref4"><sup>4</sup></a></em></p>
+<p class="date"><em>2024-12-17</em></p>
 </div>
 <div id="introduction" class="section level1 hasAnchor" number="1">
 <h1><span class="header-section-number">Chapter 1</span> Introduction<a href="index.html#introduction" class="anchor-section" aria-label="Anchor link to header"></a></h1>
@@ -2150,7 +2140,7 @@ color: #741A48;
 <pre><code>RStudio &gt; New Project &gt; Version Control &gt; Git</code></pre>
 <p>And indicating the following git repository:</p>
 <blockquote>
-<p><a href="https://github.com/3d-omics/XXX" class="uri">https://github.com/3d-omics/XXX</a></p>
+<p><a href="https://github.com/3d-omics/ANMI014_chicken_LMD_methods.git" class="uri">https://github.com/3d-omics/ANMI014_chicken_LMD_methods.git</a></p>
 </blockquote>
 <p>Once the R project has been created, follow the instructions and code chunks shown in this webbook.</p>
 </div>
@@ -2165,43 +2155,44 @@ color: #741A48;
 <span id="cb2-6"><a href="index.html#cb2-6" tabindex="-1"></a><span class="fu">library</span>(broom)</span>
 <span id="cb2-7"><a href="index.html#cb2-7" tabindex="-1"></a><span class="fu">library</span>(broom.mixed)</span>
 <span id="cb2-8"><a href="index.html#cb2-8" tabindex="-1"></a><span class="fu">library</span>(rairtable)</span>
-<span id="cb2-9"><a href="index.html#cb2-9" tabindex="-1"></a></span>
-<span id="cb2-10"><a href="index.html#cb2-10" tabindex="-1"></a><span class="co"># For tree handling</span></span>
-<span id="cb2-11"><a href="index.html#cb2-11" tabindex="-1"></a><span class="fu">library</span>(ape)</span>
-<span id="cb2-12"><a href="index.html#cb2-12" tabindex="-1"></a><span class="fu">library</span>(phyloseq)</span>
-<span id="cb2-13"><a href="index.html#cb2-13" tabindex="-1"></a><span class="fu">library</span>(phytools)</span>
-<span id="cb2-14"><a href="index.html#cb2-14" tabindex="-1"></a></span>
-<span id="cb2-15"><a href="index.html#cb2-15" tabindex="-1"></a><span class="co"># For plotting</span></span>
-<span id="cb2-16"><a href="index.html#cb2-16" tabindex="-1"></a><span class="fu">library</span>(ggplot2)</span>
-<span id="cb2-17"><a href="index.html#cb2-17" tabindex="-1"></a><span class="fu">library</span>(ggrepel)</span>
-<span id="cb2-18"><a href="index.html#cb2-18" tabindex="-1"></a><span class="fu">library</span>(ggpubr)</span>
-<span id="cb2-19"><a href="index.html#cb2-19" tabindex="-1"></a><span class="fu">library</span>(ggnewscale)</span>
-<span id="cb2-20"><a href="index.html#cb2-20" tabindex="-1"></a><span class="fu">library</span>(gridExtra)</span>
-<span id="cb2-21"><a href="index.html#cb2-21" tabindex="-1"></a><span class="fu">library</span>(ggtreeExtra)</span>
-<span id="cb2-22"><a href="index.html#cb2-22" tabindex="-1"></a><span class="fu">library</span>(ggtree)</span>
-<span id="cb2-23"><a href="index.html#cb2-23" tabindex="-1"></a><span class="fu">library</span>(ggh4x)</span>
-<span id="cb2-24"><a href="index.html#cb2-24" tabindex="-1"></a><span class="fu">library</span>(jpeg)</span>
-<span id="cb2-25"><a href="index.html#cb2-25" tabindex="-1"></a><span class="fu">library</span>(patchwork)</span>
-<span id="cb2-26"><a href="index.html#cb2-26" tabindex="-1"></a></span>
-<span id="cb2-27"><a href="index.html#cb2-27" tabindex="-1"></a><span class="co"># For statistics</span></span>
-<span id="cb2-28"><a href="index.html#cb2-28" tabindex="-1"></a><span class="fu">library</span>(spaa)</span>
-<span id="cb2-29"><a href="index.html#cb2-29" tabindex="-1"></a><span class="fu">library</span>(vegan)</span>
-<span id="cb2-30"><a href="index.html#cb2-30" tabindex="-1"></a><span class="fu">library</span>(Rtsne)</span>
-<span id="cb2-31"><a href="index.html#cb2-31" tabindex="-1"></a><span class="fu">library</span>(geiger)</span>
-<span id="cb2-32"><a href="index.html#cb2-32" tabindex="-1"></a><span class="fu">library</span>(hilldiv2)</span>
-<span id="cb2-33"><a href="index.html#cb2-33" tabindex="-1"></a><span class="fu">library</span>(distillR)</span>
-<span id="cb2-34"><a href="index.html#cb2-34" tabindex="-1"></a><span class="fu">library</span>(ANCOMBC)</span>
-<span id="cb2-35"><a href="index.html#cb2-35" tabindex="-1"></a><span class="fu">library</span>(lme4)</span>
-<span id="cb2-36"><a href="index.html#cb2-36" tabindex="-1"></a><span class="fu">library</span>(Hmsc)</span>
-<span id="cb2-37"><a href="index.html#cb2-37" tabindex="-1"></a><span class="fu">library</span>(psych)</span>
-<span id="cb2-38"><a href="index.html#cb2-38" tabindex="-1"></a></span>
-<span id="cb2-39"><a href="index.html#cb2-39" tabindex="-1"></a><span class="co"># For compositional analyses</span></span>
-<span id="cb2-40"><a href="index.html#cb2-40" tabindex="-1"></a><span class="fu">library</span>(zCompositions)</span>
-<span id="cb2-41"><a href="index.html#cb2-41" tabindex="-1"></a><span class="fu">library</span>(compositions)</span>
-<span id="cb2-42"><a href="index.html#cb2-42" tabindex="-1"></a></span>
-<span id="cb2-43"><a href="index.html#cb2-43" tabindex="-1"></a><span class="co"># Tidyverse libraries (load dplyr last to avoid conflicts)</span></span>
-<span id="cb2-44"><a href="index.html#cb2-44" tabindex="-1"></a><span class="fu">library</span>(tidyverse)</span>
-<span id="cb2-45"><a href="index.html#cb2-45" tabindex="-1"></a><span class="fu">library</span>(dplyr)  <span class="co"># Explicitly load dplyr last</span></span></code></pre></div>
+<span id="cb2-9"><a href="index.html#cb2-9" tabindex="-1"></a><span class="fu">library</span>(jsonlite)</span>
+<span id="cb2-10"><a href="index.html#cb2-10" tabindex="-1"></a></span>
+<span id="cb2-11"><a href="index.html#cb2-11" tabindex="-1"></a><span class="co"># For tree handling</span></span>
+<span id="cb2-12"><a href="index.html#cb2-12" tabindex="-1"></a><span class="fu">library</span>(ape)</span>
+<span id="cb2-13"><a href="index.html#cb2-13" tabindex="-1"></a><span class="fu">library</span>(phyloseq)</span>
+<span id="cb2-14"><a href="index.html#cb2-14" tabindex="-1"></a><span class="fu">library</span>(phytools)</span>
+<span id="cb2-15"><a href="index.html#cb2-15" tabindex="-1"></a></span>
+<span id="cb2-16"><a href="index.html#cb2-16" tabindex="-1"></a><span class="co"># For plotting</span></span>
+<span id="cb2-17"><a href="index.html#cb2-17" tabindex="-1"></a><span class="fu">library</span>(ggplot2)</span>
+<span id="cb2-18"><a href="index.html#cb2-18" tabindex="-1"></a><span class="fu">library</span>(ggrepel)</span>
+<span id="cb2-19"><a href="index.html#cb2-19" tabindex="-1"></a><span class="fu">library</span>(ggpubr)</span>
+<span id="cb2-20"><a href="index.html#cb2-20" tabindex="-1"></a><span class="fu">library</span>(ggnewscale)</span>
+<span id="cb2-21"><a href="index.html#cb2-21" tabindex="-1"></a><span class="fu">library</span>(gridExtra)</span>
+<span id="cb2-22"><a href="index.html#cb2-22" tabindex="-1"></a><span class="fu">library</span>(ggtreeExtra)</span>
+<span id="cb2-23"><a href="index.html#cb2-23" tabindex="-1"></a><span class="fu">library</span>(ggtree)</span>
+<span id="cb2-24"><a href="index.html#cb2-24" tabindex="-1"></a><span class="fu">library</span>(ggh4x)</span>
+<span id="cb2-25"><a href="index.html#cb2-25" tabindex="-1"></a><span class="fu">library</span>(jpeg)</span>
+<span id="cb2-26"><a href="index.html#cb2-26" tabindex="-1"></a><span class="fu">library</span>(patchwork)</span>
+<span id="cb2-27"><a href="index.html#cb2-27" tabindex="-1"></a></span>
+<span id="cb2-28"><a href="index.html#cb2-28" tabindex="-1"></a><span class="co"># For statistics</span></span>
+<span id="cb2-29"><a href="index.html#cb2-29" tabindex="-1"></a><span class="fu">library</span>(spaa)</span>
+<span id="cb2-30"><a href="index.html#cb2-30" tabindex="-1"></a><span class="fu">library</span>(vegan)</span>
+<span id="cb2-31"><a href="index.html#cb2-31" tabindex="-1"></a><span class="fu">library</span>(Rtsne)</span>
+<span id="cb2-32"><a href="index.html#cb2-32" tabindex="-1"></a><span class="fu">library</span>(geiger)</span>
+<span id="cb2-33"><a href="index.html#cb2-33" tabindex="-1"></a><span class="fu">library</span>(hilldiv2)</span>
+<span id="cb2-34"><a href="index.html#cb2-34" tabindex="-1"></a><span class="fu">library</span>(distillR)</span>
+<span id="cb2-35"><a href="index.html#cb2-35" tabindex="-1"></a><span class="fu">library</span>(ANCOMBC)</span>
+<span id="cb2-36"><a href="index.html#cb2-36" tabindex="-1"></a><span class="fu">library</span>(lme4)</span>
+<span id="cb2-37"><a href="index.html#cb2-37" tabindex="-1"></a><span class="fu">library</span>(Hmsc)</span>
+<span id="cb2-38"><a href="index.html#cb2-38" tabindex="-1"></a><span class="fu">library</span>(psych)</span>
+<span id="cb2-39"><a href="index.html#cb2-39" tabindex="-1"></a></span>
+<span id="cb2-40"><a href="index.html#cb2-40" tabindex="-1"></a><span class="co"># For compositional analyses</span></span>
+<span id="cb2-41"><a href="index.html#cb2-41" tabindex="-1"></a><span class="fu">library</span>(zCompositions)</span>
+<span id="cb2-42"><a href="index.html#cb2-42" tabindex="-1"></a><span class="fu">library</span>(compositions)</span>
+<span id="cb2-43"><a href="index.html#cb2-43" tabindex="-1"></a></span>
+<span id="cb2-44"><a href="index.html#cb2-44" tabindex="-1"></a><span class="co"># Tidyverse libraries (load dplyr last to avoid conflicts)</span></span>
+<span id="cb2-45"><a href="index.html#cb2-45" tabindex="-1"></a><span class="fu">library</span>(tidyverse)</span>
+<span id="cb2-46"><a href="index.html#cb2-46" tabindex="-1"></a><span class="fu">library</span>(dplyr) <span class="co"># Explicitly load dplyr last</span></span></code></pre></div>
 </div>
 </div>
 <div id="notes" class="section level2 hasAnchor" number="1.2">
@@ -2229,6 +2220,8 @@ remotes::install_github(‘anttonalberdi/distillR’)’</p>
 <ol start="1">
 <li id="fn1"><p>University of Copenhagen, <a href="mailto:antton.alberdi@sund.ku.dk" class="email">antton.alberdi@sund.ku.dk</a><a href="#fnref1" class="footnote-back">↩︎</a></p></li>
 <li id="fn2"><p>University of Copenhagen, <a href="mailto:amalia.bogri@sund.ku.dk" class="email">amalia.bogri@sund.ku.dk</a><a href="#fnref2" class="footnote-back">↩︎</a></p></li>
+<li id="fn3"><p>University of Copenhagen, <a href="mailto:carlotta.pietroni@sund.ku.dk" class="email">carlotta.pietroni@sund.ku.dk</a><a href="#fnref3" class="footnote-back">↩︎</a></p></li>
+<li id="fn4"><p>University of Copenhagen, <a href="mailto:jorge.langa@sund.ku.dk" class="email">jorge.langa@sund.ku.dk</a><a href="#fnref4" class="footnote-back">↩︎</a></p></li>
 </ol>
 </div>
             </section>
@@ -2237,7 +2230,7 @@ remotes::install_github(‘anttonalberdi/distillR’)’</p>
         </div>
       </div>
 
-<a href="data-preparation.html" class="navigation navigation-next navigation-unique" aria-label="Next page"><i class="fa fa-angle-right"></i></a>
+<a href="data-import.html" class="navigation navigation-next navigation-unique" aria-label="Next page"><i class="fa fa-angle-right"></i></a>
     </div>
   </div>
 <script>/*! jQuery v3.6.0 | (c) OpenJS Foundation and other contributors | jquery.org/license */
